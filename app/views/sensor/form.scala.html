@@ -1,0 +1,12 @@
+@(sensorForm: Form[SensorData])(implicit request: RequestHeader, m: Messages)
+
+<h1>sensor form</h1>
+
+@request.flash.get("success").getOrElse("")
+
+@helper.form(action = routes.SensorController.sensorFormPost()) {
+  @helper.CSRF.formField
+  @helper.inputText(sensorForm("name"))
+  @helper.inputText(sensorForm("age"))
+  <input type="submit" value="submit"/>
+}

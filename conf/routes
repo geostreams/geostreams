@@ -10,6 +10,12 @@ GET     /                           controllers.HomeController.index
 GET     /user        controllers.UserController.userGet
 POST    /user        controllers.UserController.userPost
 
+# Sensors
+GET     /api/sensors/:id    controllers.SensorController.sensorGet(id: Int)
+POST    /api/sensors        controllers.SensorController.sensorCreate
+POST    /sensor             controllers.SensorController.sensorFormPost
+GET     /sensor             controllers.SensorController.sensorFormGet
+
 # Testing postgres connection
 GET     /postgresql                 controllers.DBController.index
 
