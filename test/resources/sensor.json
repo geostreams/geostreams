@@ -1,0 +1,30 @@
+{
+  "name": "45023",
+  "created": "2015-03-19T16:59:13Z",
+  "type": "Feature",
+  "properties": {
+    "region": "SU",
+    "type": {
+      "id": "noaa",
+      "title": "National Oceanic and Atmospheric Administration"
+    },
+    "name": "45023",
+    "popupContent": "45023"
+  },
+  "geometry": {
+    "type": "Point",
+    "coordinates": [
+      -88.607,
+      47.27,
+      0
+    ]
+  },
+  "min_start_time": "2010-07-08T18:00:00Z",
+  "max_end_time": "2014-10-29T08:10:00Z",
+  "parameters": [
+    "air-temperature-c",
+    "sea-surface-temperature-c",
+    "significant-wave-height-m",
+    "wind-speed-m/s"
+  ]
+}

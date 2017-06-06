@@ -7,7 +7,7 @@ import play.api.libs.json.{JsValue, __}
   */
 case class SensorModel(name: String, geoType: String, geometry: GeometryModel, properties: JsValue)
 
-case class GeometryModel(`type`: String, coordinates: List[Double])
+case class GeometryModel(`type`: String, coordinates: JsValue)
 
 object SensorModel {
 

@@ -22,8 +22,10 @@ class SensorController @Inject()(db: Database)(implicit val messagesApi: Message
 
   implicit val geometryReads: Reads[GeometryModel] = (
     (JsPath \ "type").read[String] and
-      (JsPath \ "coordinates").read[List[Double]]
+      (JsPath \ "coordinates").read[JsValue]
     ) (GeometryModel.apply _)
+
+  implicit val geometryWrite = Json.writes[GeometryModel]
 
   implicit val sensorReads: Reads[SensorModel] = (
     (JsPath \ "name").read[String] and
@@ -31,6 +33,8 @@ class SensorController @Inject()(db: Database)(implicit val messagesApi: Message
       (JsPath \ "geometry").read[GeometryModel] and
       (JsPath \ 'properties).read[JsValue]
     ) (SensorModel.apply _)
+
+  implicit val sensorWrite = Json.writes[SensorModel]
 
   val sensorForm = Form(
     mapping(
@@ -57,6 +61,10 @@ class SensorController @Inject()(db: Database)(implicit val messagesApi: Message
     )
   }
 
+  /**
+    * Create sensor
+    * @return
+    */
   def sensorCreate = Action(BodyParsers.parse.json) { implicit request =>
     val sensorResult = request.body.validate[SensorModel]
     sensorResult.fold(
@@ -67,25 +75,29 @@ class SensorController @Inject()(db: Database)(implicit val messagesApi: Message
         // connection will be closed at the end of the block
         db.withConnection { conn =>
           val ps = conn.prepareStatement("INSERT INTO sensors(name, geog, created, metadata) " +
-            "VALUES(?, ST_SetSRID(ST_MakePoint(?, ?, ?), 4326), NOW(), CAST(? AS json));",
+            "VALUES(?, CAST(ST_GeomFromGeoJSON(?) AS geography), NOW(), CAST(? AS json));",
             Statement.RETURN_GENERATED_KEYS)
           ps.setString(1, sensor.name)
-          ps.setDouble(2, sensor.geometry.coordinates(0))
-          ps.setDouble(3, sensor.geometry.coordinates(1))
-          ps.setDouble(4, sensor.geometry.coordinates(2))
-          ps.setString(5, Json.stringify(sensor.properties))
+          ps.setString(2, Json.stringify(Json.toJson(sensor.geometry)))
+          ps.setString(3, Json.stringify(sensor.properties))
           ps.executeUpdate()
           val rs = ps.getGeneratedKeys
           rs.next()
           val id = rs.getInt(1)
           rs.close()
           ps.close()
-          Ok(Json.obj("status" -> "OK", "message" -> ("Sensor '" + id + "' saved.")))
+          Ok(Json.obj("status" -> "OK", "id" -> id))
         }
       }
     )
   }
 
+  /**
+    * Retrieve sensor. Set `min_start_time` and `max_start_time` based on streams belonging to this sensor.
+    * TODO: simplify query by setting `min_start_time` and `max_start_time` when updating statistics on sensors and streams.
+    * @param id
+    * @return
+    */
   def sensorGet(id: Int) = Action {
     // connection will be closed at the end of the block
     db.withConnection { conn =>
@@ -140,6 +152,17 @@ class SensorController @Inject()(db: Database)(implicit val messagesApi: Message
   }
 
   def deleteSensor(id: String) = Action {
-    NotImplemented
+    db.withConnection { conn =>
+      val query = "DELETE FROM datapoints USING streams WHERE stream_id IN (SELECT gid FROM streams WHERE sensor_id = ?);" +
+        "DELETE FROM streams WHERE gid IN (SELECT gid FROM streams WHERE sensor_id = ?);" +
+        "DELETE FROM sensors where gid = ?;"
+      val st = conn.prepareStatement(query)
+      st.setInt(1, id.toInt)
+      st.setInt(2, id.toInt)
+      st.setInt(3, id.toInt)
+      st.executeUpdate()
+      st.close()
+      Ok(Json.obj("status" -> "OK"))
+    }
   }
 }
