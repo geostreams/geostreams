@@ -9,8 +9,9 @@ import play.api.data._
 import play.api.db.Database
 import play.api.i18n._
 import play.api.libs.functional.syntax._
-import play.api.libs.json.{JsValue, _}
 import play.api.mvc._
+import play.api.libs.json._
+import play.api.libs.json.Json._
 
 case class SensorData(name: String, age: Int)
 
@@ -62,7 +63,8 @@ class SensorController @Inject()(db: Database)(implicit val messagesApi: Message
   }
 
   /**
-    * Create sensor
+    * Create sensor.
+    *
     * @return
     */
   def sensorCreate = Action(BodyParsers.parse.json) { implicit request =>
@@ -95,40 +97,57 @@ class SensorController @Inject()(db: Database)(implicit val messagesApi: Message
   /**
     * Retrieve sensor. Set `min_start_time` and `max_start_time` based on streams belonging to this sensor.
     * TODO: simplify query by setting `min_start_time` and `max_start_time` when updating statistics on sensors and streams.
+    *
     * @param id
     * @return
     */
   def sensorGet(id: Int) = Action {
-    // connection will be closed at the end of the block
-    db.withConnection { conn =>
-      // TODO store start time, end time and parameter list in the row and update them when the update sensor endpoint is called.
-      // Then simplify this query to not calculate them on the fly.
-      val query = "WITH stream_info AS (" +
-        "SELECT sensor_id, start_time, end_time, unnest(params) AS param FROM streams WHERE sensor_id=?)" +
-        "SELECT row_to_json(t, true) AS my_sensor FROM (" +
-        "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
-        "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
-        "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') as max_end_time, " +
-        "array_agg(distinct stream_info.param) as parameters " +
-        "FROM sensors " +
-        "LEFT OUTER JOIN stream_info ON stream_info.sensor_id = sensors.gid " +
-        "WHERE sensors.gid=?" +
-        "GROUP BY gid) AS t"
-      val st = conn.prepareStatement(query)
-      st.setInt(1, id)
-      st.setInt(2, id)
-      val rs = st.executeQuery()
-      rs.next()
-      val data = rs.getString(1)
-      rs.close()
-      st.close()
-      Ok(Json.obj("status" -> "OK", "sensor" -> Json.parse(data)))
-    }
+    val sensor = getSensor(id)
+    Ok(Json.obj("status" -> "OK", "sensor" -> sensor))
   }
 
-  def updateSensorMetadata(id: String) = Action {
-    NotImplemented
+  /**
+    * Update `properties` element of sensor.
+    * @param id
+    * @return new sensor definition
+    */
+  def updateSensorMetadata(id: Int) = Action(parse.json) { implicit request =>
+    request.body.validate[(JsObject)].map {
+      case (body) =>
+        // connection will be closed at the end of the block
+        db.withConnection { conn =>
+          val query = "SELECT row_to_json(t, true) AS my_sensor FROM (" +
+            "SELECT metadata As properties FROM sensors " +
+            "WHERE gid=?) AS t"
+          val st = conn.prepareStatement(query)
+          st.setInt(1, id.toInt)
+          val rs = st.executeQuery()
+          var sensorData = ""
+          while (rs.next()) {
+            sensorData += rs.getString(1)
+          }
+          rs.close()
+          st.close()
+
+          val oldDataJson = Json.parse(sensorData).as[JsObject]
+
+          val jsonTransformer = (__ \ 'properties).json.update(
+            __.read[JsObject].map { o => o ++ body }
+          )
+          val updatedJSON: JsObject = oldDataJson.transform(jsonTransformer).getOrElse(oldDataJson)
+
+          val query2 = "UPDATE sensors SET metadata = CAST(? AS json) WHERE gid = ?"
+          val st2 = conn.prepareStatement(query2)
+          st2.setString(1, Json.stringify((updatedJSON \ "properties").getOrElse(Json.obj())))
+          st2.setInt(2, id)
+          st2.executeUpdate()
+          st2.close()
+          val sensor = getSensor(id)
+          Ok(Json.obj("status" -> "OK", "sensor" -> sensor))
+        }
+    }.recoverTotal {
+      e => BadRequest("Detected error:" + JsError.toJson(e))
+    }
   }
 
   def getSensorStatistics(id: String) = Action {
@@ -163,6 +182,34 @@ class SensorController @Inject()(db: Database)(implicit val messagesApi: Message
       st.executeUpdate()
       st.close()
       Ok(Json.obj("status" -> "OK"))
+    }
+  }
+
+  private[this] def getSensor(id: Int): JsValue = {
+    db.withConnection { conn =>
+      // TODO store start time, end time and parameter list in the row and update them when the update sensor endpoint is called.
+      // Then simplify this query to not calculate them on the fly.
+      val query = "WITH stream_info AS (" +
+        "SELECT sensor_id, start_time, end_time, unnest(params) AS param FROM streams WHERE sensor_id=?)" +
+        "SELECT row_to_json(t, true) AS my_sensor FROM (" +
+        "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
+        "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
+        "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') as max_end_time, " +
+        "array_agg(distinct stream_info.param) as parameters " +
+        "FROM sensors " +
+        "LEFT OUTER JOIN stream_info ON stream_info.sensor_id = sensors.gid " +
+        "WHERE sensors.gid=?" +
+        "GROUP BY gid) AS t"
+      val st = conn.prepareStatement(query)
+      st.setInt(1, id)
+      st.setInt(2, id)
+      val rs = st.executeQuery()
+      rs.next()
+      val data = rs.getString(1)
+      rs.close()
+      st.close()
+      Json.parse(data)
     }
   }
 }

@@ -1,15 +1,15 @@
 {
-  "name": "45023",
-  "created": "2015-03-19T16:59:13Z",
+  "name": "Sensor #1",
+  "created": "2017-06-07T16:59:13Z",
   "type": "Feature",
   "properties": {
-    "region": "SU",
+    "region": "IL",
     "type": {
-      "id": "noaa",
-      "title": "National Oceanic and Atmospheric Administration"
+      "id": "NCSA",
+      "title": "National Center for Supercomputing Applications"
     },
-    "name": "45023",
-    "popupContent": "45023"
+    "name": "Sensor #1",
+    "popupContent": "Testing sensor"
   },
   "geometry": {
     "type": "Point",
@@ -19,8 +19,6 @@
       0
     ]
   },
-  "min_start_time": "2010-07-08T18:00:00Z",
-  "max_end_time": "2014-10-29T08:10:00Z",
   "parameters": [
     "air-temperature-c",
     "sea-surface-temperature-c",

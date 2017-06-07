@@ -10,7 +10,7 @@ GET           /                                       controllers.HomeController
 GET           /api/sensors/:id                        controllers.SensorController.sensorGet(id: Int)
 POST          /api/sensors                            controllers.SensorController.sensorCreate
 GET           /api/sensors/update                     controllers.SensorController.updateStatisticsStreamSensor()
-PUT           /api/sensors/:id                        controllers.SensorController.updateSensorMetadata(id: String)
+PUT           /api/sensors/:id                        controllers.SensorController.updateSensorMetadata(id: Int)
 GET           /api/sensors/:id/stats                  controllers.SensorController.getSensorStatistics(id: String)
 GET           /api/sensors/:id/streams                controllers.SensorController.getSensorStreams(id: String)
 GET           /api/sensors/:id/update                 controllers.SensorController.updateStatisticsSensor(id: String)

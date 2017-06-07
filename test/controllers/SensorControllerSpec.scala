@@ -39,7 +39,7 @@ class SensorControllerSpec extends PlaySpec with GuiceOneAppPerSuite {
       status(getSensorRes) mustBe OK
       contentType(getSensorRes) mustBe Some("application/json")
       val sensor = contentAsJson(getSensorRes)
-      (sensor \ "sensor" \ "name").as[String] mustEqual "45023"
+      (sensor \ "sensor" \ "name").as[String] mustEqual "Sensor #1"
     }
 
     "delete a newly created sensor" in {
@@ -61,6 +61,28 @@ class SensorControllerSpec extends PlaySpec with GuiceOneAppPerSuite {
       contentType(delSensorRes) mustBe Some("application/json")
       val delBody = contentAsJson(delSensorRes)
       (delBody \ "status").as[String] mustEqual "OK"
+    }
+
+    "update properties sub-document" in {
+      val request = FakeRequest(POST, "/api/sensors").withHeaders("Host" -> "localhost").withJsonBody(newSensor)
+      val createSensor = route(app, request).get
+
+      status(createSensor) mustBe OK
+      contentType(createSensor) mustBe Some("application/json")
+      val createSensorRes = contentAsJson(createSensor)
+      (createSensorRes \ "status").as[String] mustEqual "OK"
+
+      // update properties
+      val properties = Json.parse("""{"foo":"bar"}""")
+      val sensorId = (createSensorRes \ "id").as[Int]
+      val updateSensorReq = FakeRequest(PUT, "/api/sensors/" + sensorId).withHeaders("Host" -> "localhost")
+        .withJsonBody(properties)
+      val updateSensorRes = route(app, updateSensorReq).get
+
+      status(updateSensorRes) mustBe OK
+      contentType(updateSensorRes) mustBe Some("application/json")
+      val updateBody = contentAsJson(updateSensorRes)
+      (updateBody \ "sensor" \ "properties" \ "foo").as[String] mustEqual "bar"
     }
   }
 }
