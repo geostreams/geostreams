@@ -15,7 +15,7 @@ GET           /api/sensors/:id/stats                  controllers.SensorControll
 GET           /api/sensors/:id/streams                controllers.SensorController.getSensorStreams(id: String)
 GET           /api/sensors/:id/update                 controllers.SensorController.updateStatisticsSensor(id: String)
 GET           /api/sensors                            controllers.SensorController.searchSensors(geocode: Option[String] ?= None, sensor_name: Option[String] ?= None)
-DELETE        /api/sensors/:id                        controllers.SensorController.deleteSensor(id: String)
+DELETE        /api/sensors/:id                        controllers.SensorController.deleteSensor(id: Int)
 
 # Streams
 POST          /api/streams                            controllers.StreamController.createStream
