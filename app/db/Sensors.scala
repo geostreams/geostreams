@@ -18,4 +18,6 @@ trait Sensors {
   def updateSensorStats(id: Option[Int]): Unit
   def searchSensors(geocode: Option[String], sensor_name: Option[String]): Option[String]
   def deleteSensor(id: Int): Unit
+  // used in other db.
+  def updateEmptyStats()
 }

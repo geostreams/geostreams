@@ -110,7 +110,9 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
         "SELECT sensor_id, start_time, end_time, unnest(params) AS param FROM streams WHERE sensor_id=?" +
         ") " +
         "SELECT row_to_json(t, true) AS my_sensor FROM (" +
-        "SELECT to_char(min(start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') As min_start_time, to_char(max(end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') As max_end_time, array_agg(distinct param) AS parameters FROM stream_info" +
+        "SELECT to_char(min(start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') As min_start_time, " +
+        "to_char(max(end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') As max_end_time, array_agg(distinct " +
+        "param) AS parameters FROM stream_info" +
         ") As t;"
       val st = conn.prepareStatement(query)
       st.setInt(1, id.toInt)
@@ -150,7 +152,8 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
 
       // next update the streams associated with the sensor
       var query = "UPDATE streams SET start_time=n.start_time, end_time=n.end_time, params=n.params FROM ("
-      query += "  SELECT stream_id, min(datapoints.start_time) AS start_time, max(datapoints.end_time) AS end_time, array_agg(distinct keys) AS params"
+      query += "  SELECT stream_id, min(datapoints.start_time) AS start_time, max(datapoints.end_time) AS end_time, " +
+        "array_agg(distinct keys) AS params"
       if (!sensor_id.isDefined) {
         query += "    FROM datapoints, jsonb_object_keys(data) data(keys)"
       } else {
@@ -179,7 +182,11 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
         "SELECT sensor_id, start_time, end_time, unnest(params) AS param FROM streams" +
         ") " +
         "SELECT row_to_json(t, true) FROM (" +
-        "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, 'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS max_end_time, array_agg(distinct stream_info.param) as parameters " +
+        "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
+        "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
+        "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS max_end_time, " +
+        "array_agg(distinct stream_info.param) as parameters " +
         "FROM sensors " +
         "LEFT OUTER JOIN stream_info ON stream_info.sensor_id = sensors.gid "
       if (parts.length == 3) {

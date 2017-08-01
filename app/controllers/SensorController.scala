@@ -94,6 +94,12 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     }
   }
 
+  /**
+    * Get `properties` element of sensor.
+    *
+    * @param id
+    * @return sensor definition
+    */
   def getSensorStatistics(id: Int) = Action {
     val data = sensors.getSensorStats(id)
     Ok(Json.obj("status" -> "OK",
@@ -103,21 +109,43 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
 
   }
 
+  /**
+    * Get all streams of a sensor.
+    *
+    * @param id
+    * @return list of streams<id, name>
+    */
   def getSensorStreams(id: Int) = Action {
     val streams = sensors.getSensorStreams(id)
     Ok(Json.obj("status" -> "OK", "streams" -> streams))
   }
 
+  /**
+    * Update "min_start_time", "max_end_time", "params" element of a senaor.
+    *
+    * @param id
+    * @return
+    */
   def updateStatisticsSensor(id: Int) = Action { implicit request =>
     sensors.updateSensorStats(Some(id))
     Ok(Json.obj("status" -> "update"))
   }
 
+  /**
+    * Update "min_start_time", "max_end_time", "params" element of all senaors.
+    *
+    */
   def updateStatisticsStreamSensor() = Action { implicit request =>
     sensors.updateSensorStats(None)
     Ok(Json.obj("status" -> "update"))
   }
 
+  /**
+    * Search sensors.
+    *
+    * @param geocode, sensor_name
+    * @return sensor
+    */
   def searchSensors(geocode: Option[String], sensor_name: Option[String]) = Action {
 
     sensors.searchSensors(geocode, sensor_name) match {
@@ -126,6 +154,11 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     }
   }
 
+  /**
+    * Delete sensor.
+    *
+    * @return
+    */
   def deleteSensor(id: Int) = Action {
     sensors.deleteSensor(id)
     Ok(Json.obj("status" -> "OK"))

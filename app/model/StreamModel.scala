@@ -8,16 +8,17 @@ import model.GeometryModel
 /**
   * Stream model.
   */
-case class StreamModel(name: String, geoType: String, geometry: GeometryModel, properties: JsValue)
+case class StreamModel(name: String, geoType: String, geometry: GeometryModel, properties: JsValue, sensor_id:Int)
 
 object StreamModel {
 //  implicit val geometryWrite = Json.writes[GeometryModel]
 
   implicit val streamReads: Reads[StreamModel] = (
-    (JsPath \ "name").read[String] and
+      (JsPath \ "name").read[String] and
       (JsPath \ "type").read[String] and
       (JsPath \ "geometry").read[GeometryModel] and
-      (JsPath \ "properties").read[JsValue]
+      (JsPath \ "properties").read[JsValue] and
+      (JsPath \ "sensor_id").read[Int]
     ) (StreamModel.apply _)
 
   implicit val streamWrite = Json.writes[StreamModel]
