@@ -10,8 +10,12 @@ import play.api.libs.json.{JsObject, JsValue}
   */
 @ImplementedBy(classOf[PostgresSensors])
 trait Sensors {
-  def createSensor(sesor: SensorModel): Int
+  def createSensor(sensor: SensorModel): Int
   def getSensor(id: Int): JsValue
   def updateSensorMetadata(id: Int , update: JsObject): JsValue
+  def getSensorStats(id: Int): JsValue
+  def getSensorStreams(id: Int): JsValue
+  def updateSensorStats(id: Option[Int]): Unit
+  def searchSensors(geocode: Option[String], sensor_name: Option[String]): Option[String]
   def deleteSensor(id: Int): Unit
 }

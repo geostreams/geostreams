@@ -94,24 +94,36 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     }
   }
 
-  def getSensorStatistics(id: String) = Action {
-    NotImplemented
+  def getSensorStatistics(id: Int) = Action {
+    val data = sensors.getSensorStats(id)
+    Ok(Json.obj("status" -> "OK",
+      "range" -> Map[String, JsValue]("min_start_time" -> (data \ "min_start_time").getOrElse(JsNull),
+        "max_end_time" -> (data \ "max_end_time").getOrElse(JsNull)),
+      "parameters" -> (data \ "parameters").getOrElse(JsNull)))
+
   }
 
-  def getSensorStreams(id: String) = Action {
-    NotImplemented
+  def getSensorStreams(id: Int) = Action {
+    val streams = sensors.getSensorStreams(id)
+    Ok(Json.obj("status" -> "OK", "streams" -> streams))
   }
 
-  def updateStatisticsSensor(id: String) = Action {
-    NotImplemented
+  def updateStatisticsSensor(id: Int) = Action { implicit request =>
+    sensors.updateSensorStats(Some(id))
+    Ok(Json.obj("status" -> "update"))
   }
 
-  def updateStatisticsStreamSensor() = Action {
-    NotImplemented
+  def updateStatisticsStreamSensor() = Action { implicit request =>
+    sensors.updateSensorStats(None)
+    Ok(Json.obj("status" -> "update"))
   }
 
   def searchSensors(geocode: Option[String], sensor_name: Option[String]) = Action {
-    NotImplemented
+
+    sensors.searchSensors(geocode, sensor_name) match {
+      case Some(d) => Ok(Json.parse(d))
+      case None => Ok(Json.obj("status" -> "No data found"))
+    }
   }
 
   def deleteSensor(id: Int) = Action {
