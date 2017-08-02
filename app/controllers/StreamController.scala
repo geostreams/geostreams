@@ -106,7 +106,7 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
   /**
     * Delete stream.
     *
-    * @return
+    * @param id
     */
   def deleteStream(id: Int) = Action {
     streams.deleteStream(id)

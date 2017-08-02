@@ -28,12 +28,12 @@ DELETE        /api/streams/:id                        controllers.StreamControll
 
 # Datapoints
 POST          /api/datapoints                         controllers.DatapointController.addDatapoint(invalidateCache: Boolean ?= true)
-DELETE        /api/datapoints/:id                     controllers.DatapointController.deleteDatapoint(id: String)
+DELETE        /api/datapoints/:id                     controllers.DatapointController.deleteDatapoint(id: Int)
 GET           /api/datapoints                         controllers.DatapointController.searchDatapoints(operator = "", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/datapoints/averages                controllers.DatapointController.searchDatapoints(operator = "averages", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/datapoints/trends                  controllers.DatapointController.searchDatapoints(operator = "trends", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/datapoints/bin/:time/:depth        controllers.DatapointController.binDatapoints(time, depth: Double, raw: Boolean ?= false, since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty)
-GET           /api/datapoints/:id                     controllers.DatapointController.getDatapoint(id: String)
+GET           /api/datapoints/:id                     controllers.DatapointController.getDatapoint(id: Int)
 
 # Cache
 GET           /api/cache                              controllers.CacheController.cacheListAction

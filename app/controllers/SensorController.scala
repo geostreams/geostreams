@@ -157,7 +157,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
   /**
     * Delete sensor.
     *
-    * @return
+    * @param id
     */
   def deleteSensor(id: Int) = Action {
     sensors.deleteSensor(id)

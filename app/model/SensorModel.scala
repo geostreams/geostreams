@@ -26,7 +26,7 @@ object SensorModel {
     (JsPath \ "name").read[String] and
       (JsPath \ "type").read[String] and
       (JsPath \ "geometry").read[GeometryModel] and
-      (JsPath \ 'properties).read[JsValue]
+      (JsPath \ "properties").read[JsValue]
     ) (SensorModel.apply _)
 
   implicit val sensorWrite = Json.writes[SensorModel]
