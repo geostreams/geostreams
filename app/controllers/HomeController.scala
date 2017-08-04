@@ -3,6 +3,8 @@ package controllers
 import javax.inject._
 import play.api._
 import play.api.mvc._
+import play.api.libs.json._
+import play.api.libs.json.Json._
 
 /**
  * This controller creates an `Action` to handle HTTP requests to the
@@ -20,5 +22,9 @@ class HomeController @Inject() extends Controller {
    */
   def index = Action { implicit request =>
     Ok(views.html.index())
+  }
+
+  def oldApi(page:String) = Action {
+    Ok(Json.obj("status" -> "You are using old APIs, please remove 'geostreams' in URL"))
   }
 }

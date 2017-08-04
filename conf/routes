@@ -5,6 +5,7 @@
 
 # An example controller showing a sample home page
 GET           /                                       controllers.HomeController.index
+GET           /api/geostreams/*page                   controllers.HomeController.oldApi(page)
 
 # Sensors
 GET           /api/sensors/:id                        controllers.SensorController.sensorGet(id: Int)

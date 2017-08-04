@@ -9,6 +9,8 @@ import model.SensorModel
 import play.api.libs.json.{JsObject, JsValue, Json, __}
 import play.api.db.Database
 import model.SensorModel._
+import play.api.libs.json._
+import play.api.libs.json.Json._
 
 /**
   * Store sensors in Postgres.
@@ -34,7 +36,7 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
     }
   }
 
-  def getSensor(id: Int): JsValue = {
+  def getSensor(id: Int): Option[SensorModel] = {
     db.withConnection { conn =>
       // TODO store start time, end time and parameter list in the row and update them when the update sensor endpoint is called.
       // Then simplify this query to not calculate them on the fly.
@@ -48,17 +50,20 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
         "array_agg(distinct stream_info.param) as parameters " +
         "FROM sensors " +
         "LEFT OUTER JOIN stream_info ON stream_info.sensor_id = sensors.gid " +
-        "WHERE sensors.gid=?" +
+        "WHERE sensors.gid=? " +
         "GROUP BY gid) AS t"
       val st = conn.prepareStatement(query)
       st.setInt(1, id)
       st.setInt(2, id)
       val rs = st.executeQuery()
-      rs.next()
-      val data = rs.getString(1)
-      rs.close()
-      st.close()
-      Json.parse(data)
+      var sensor:Option[SensorModel] = None
+      while(rs.next()) {
+        val data = rs.getString(1)
+        sensor = Some(Json.parse(data).as[SensorModel])
+      }
+        rs.close()
+        st.close()
+      sensor
     }
   }
 
@@ -155,12 +160,12 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
       query += "  SELECT stream_id, min(datapoints.start_time) AS start_time, max(datapoints.end_time) AS end_time, " +
         "array_agg(distinct keys) AS params"
       if (!sensor_id.isDefined) {
-        query += "    FROM datapoints, jsonb_object_keys(data) data(keys)"
+        query += "    FROM datapoints, jsonb_object_keys(data) data(keys) "
       } else {
-        query += "    FROM datapoints, jsonb_object_keys(data) data(keys), streams"
-        query += "    WHERE streams.gid=datapoints.stream_id AND streams.sensor_id=?"
+        query += "    FROM datapoints, jsonb_object_keys(data) data(keys), streams "
+        query += "    WHERE streams.gid=datapoints.stream_id AND streams.sensor_id=? "
       }
-      query += "    GROUP by stream_id) n"
+      query += "    GROUP by stream_id) n "
       query += "  WHERE n.stream_id=streams.gid;"
 
       val st = conn.prepareStatement(query)
