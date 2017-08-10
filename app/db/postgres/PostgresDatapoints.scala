@@ -4,6 +4,7 @@ import java.sql.{SQLException, Statement}
 import javax.inject.Inject
 import play.api.Logger
 import util.Parsers
+import scala.collection.mutable.ListBuffer
 
 import db.Datapoints
 import model.DatapointModel
@@ -52,7 +53,7 @@ class PostgresDatapoints @Inject()(db: Database) extends Datapoints {
     }
   }
 
-  def getDatapoint(id: Int): String = {
+  def getDatapoint(id: Int): Option[DatapointModel] = {
     db.withConnection { conn =>
       var data = ""
       val query = "SELECT row_to_json(t,true) As my_datapoint FROM " +
@@ -62,19 +63,22 @@ class PostgresDatapoints @Inject()(db: Database) extends Datapoints {
         "to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, " +
         "datapoints.data As properties, 'Feature' As type, " +
         "ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, " +
-        "stream_id::text, sensor_id::text, sensors.name as sensor_name " +
+        "stream_id::int, sensor_id::int, sensors.name as sensor_name " +
         "FROM sensors, streams, datapoints " +
         "WHERE datapoints.gid=? AND sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid) As t;"
       val st = conn.prepareStatement(query)
       st.setInt(1, id)
       Logger.debug("Datapoints get statement: " + st)
       val rs = st.executeQuery()
-      while (rs.next()) {
-        data += rs.getString(1)
+
+      var datapoint:Option[DatapointModel] = None
+      while(rs.next()) {
+        val data = rs.getString(1)
+        datapoint = Some(Json.parse(data).as[DatapointModel])
       }
       rs.close()
       st.close()
-      data
+      datapoint
     }
   }
 
@@ -86,7 +90,7 @@ class PostgresDatapoints @Inject()(db: Database) extends Datapoints {
         case None => Array[String]()
       }
       var query = "SELECT to_json(t) As datapoint FROM " +
-        "(SELECT datapoints.gid As id, to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, data As properties, 'Feature' As type, ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, stream_id::text, sensor_id::text, sensors.name as sensor_name FROM sensors, streams, datapoints" +
+        "(SELECT datapoints.gid As id, to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, data As properties, 'Feature' As type, ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, stream_id::int, sensor_id::int, sensors.name as sensor_name FROM sensors, streams, datapoints" +
         " WHERE sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid"
 
       if (since.isDefined) query += " AND datapoints.start_time >= ?"
@@ -189,7 +193,7 @@ class PostgresDatapoints @Inject()(db: Database) extends Datapoints {
         st.setInt(i, sensor_id.get.toInt)
       }
       st.setFetchSize(50)
-      Logger.debug("Geostream search: " + st)
+      Logger.debug("Datapoints search statement: " + st)
       val rs = st.executeQuery()
 
       new Iterator[JsObject] {
@@ -255,6 +259,4 @@ class PostgresDatapoints @Inject()(db: Database) extends Datapoints {
       case None => obj
     }
   }
-
-
 }

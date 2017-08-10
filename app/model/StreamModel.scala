@@ -14,7 +14,7 @@ case class StreamModel(id:Int = 0,
                        geoType: String,
                        geometry: GeometryModel,
                        properties: JsValue,
-                       sensor_id:Int,
+                       sensor_id: Int,
                        start_time: String,
                        end_time: String,
                        parameters: List[String] = List())

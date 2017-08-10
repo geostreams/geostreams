@@ -3,6 +3,7 @@ package db.postgres
 import java.sql.{SQLException, Statement}
 import javax.inject.Inject
 import play.api.Logger
+import scala.collection.mutable.ListBuffer
 
 import db.Sensors
 import model.SensorModel
@@ -176,7 +177,7 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
     }
   }
 
-  def searchSensors(geocode: Option[String], sensor_name: Option[String]): Option[String] = {
+  def searchSensors(geocode: Option[String], sensor_name: Option[String]): List[SensorModel] = {
     db.withConnection { conn =>
       val parts = geocode match {
         case Some(x) => x.split(",")
@@ -234,18 +235,12 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
       st.setFetchSize(50)
       Logger.debug("Sensors search statement: " + st)
       val rs = st.executeQuery()
-      var data = "[ "
+      var sensors:ListBuffer[SensorModel] = ListBuffer()
       while (rs.next()) {
-        if (data != "[ ") data += ","
-        data += rs.getString(1)
+        val data = rs.getString(1)
+        sensors += Json.parse(data).as[SensorModel]
       }
-      data += "]"
-      rs.close()
-      st.close()
-      if (data == "null") { // FIXME
-        Logger.debug("Searching NONE")
-        None
-      } else Some(data)
+      sensors.toList
     }
   }
 

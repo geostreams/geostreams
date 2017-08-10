@@ -74,8 +74,12 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @return
     */
   def sensorGet(id: Int) = Action {
-    val sensor = sensors.getSensor(id)
-    Ok(Json.obj("status" -> "OK", "sensor" -> sensor))
+    sensors.getSensor(id) match {
+      case Some(sensor) => Ok(Json.obj("status" -> "OK", "sensor" -> sensor))
+      case None => NotFound(Json.obj("message" -> "Sensor not found."))
+    }
+
+
   }
 
   /**
@@ -148,10 +152,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     */
   def searchSensors(geocode: Option[String], sensor_name: Option[String]) = Action {
 
-    sensors.searchSensors(geocode, sensor_name) match {
-      case Some(d) => Ok(Json.parse(d))
-      case None => Ok(Json.obj("status" -> "No data found"))
-    }
+    Ok(Json.obj("sensors" ->sensors.searchSensors(geocode, sensor_name)))
   }
 
   /**

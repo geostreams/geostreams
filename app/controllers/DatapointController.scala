@@ -82,8 +82,10 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
     * @param id
     */
   def getDatapoint(id: Int) = Action {
-    val datapoint = datapoints.getDatapoint(id)
-    Ok(Json.obj("status" -> "OK", "datapoint" -> Json.parse(datapoint)))
+    datapoints.getDatapoint(id) match {
+      case Some(datapoint) => Ok(Json.obj("status" -> "OK", "datapoint" -> datapoint))
+      case None => NotFound(Json.obj("message" -> "Datapoint not found."))
+    }
   }
 
   /**

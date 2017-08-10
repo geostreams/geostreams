@@ -16,7 +16,7 @@ trait Sensors {
   def getSensorStats(id: Int): JsValue
   def getSensorStreams(id: Int): JsValue
   def updateSensorStats(id: Option[Int]): Unit
-  def searchSensors(geocode: Option[String], sensor_name: Option[String]): Option[String]
+  def searchSensors(geocode: Option[String], sensor_name: Option[String]): List[SensorModel]
   def deleteSensor(id: Int): Unit
   // used in other db.
   def updateEmptyStats()

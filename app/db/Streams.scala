@@ -11,9 +11,9 @@ import play.api.libs.json.{JsObject, JsValue}
 @ImplementedBy(classOf[PostgresStreams])
 trait Streams {
   def createStream(stream: StreamModel): Int
-  def getStream(id: Int): JsValue
-  def patchStreamMetadata(id: Int, data: String): JsValue
+  def getStream(id: Int): Option[StreamModel]
+  def patchStreamMetadata(id: Int, data: String): Option[StreamModel]
   def updateStreamStats(stream_id: Option[Int])
-  def searchStreams(geocode: Option[String], stream_name: Option[String]): Option[String]
+  def searchStreams(geocode: Option[String], stream_name: Option[String]): List[StreamModel]
   def deleteStream(id: Int): Unit
 }

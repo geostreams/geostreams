@@ -2,17 +2,19 @@ package controllers
 
 import javax.inject.{Inject, Singleton}
 
-import play.api.mvc.{Action, Controller}
-import db.Sensors
-import db.Streams
+import db.{Sensors, Streams}
 import model.{GeometryModel, SensorModel, StreamModel}
+
+import play.api.mvc._
+import play.api.mvc.{Action, Controller}
+import play.api.mvc.Results._
 import play.api.data._
 import play.api.db.Database
 import play.api.i18n._
-import play.api.libs.functional.syntax._
-import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.json.Json._
+import play.api.libs.functional.syntax._
+
 
 /**
   * Streams are a way of grouping datapoints together. A stream has to belong to a `Sensor` and and `Datapoint` has to
@@ -58,7 +60,11 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     */
   def getStream(id: Int) = Action {
     val stream = streams.getStream(id)
-    Ok(Json.obj("status" -> "ok", "stream" -> stream))
+    streams.getStream(id) match {
+      case Some(stream) =>  Ok(Json.obj("status" -> "ok", "stream" -> stream))
+      case None => NotFound(Json.obj("message" -> "Stream not found."))
+    }
+
   }
 
   /**

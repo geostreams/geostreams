@@ -3,6 +3,7 @@ package db.postgres
 import java.sql.{SQLException, Statement}
 import javax.inject.Inject
 import play.api.Logger
+import scala.collection.mutable.ListBuffer
 
 import db.Streams
 import db.Sensors
@@ -38,29 +39,33 @@ class PostgresStreams @Inject()(db: Database, sensors: Sensors) extends Streams 
     }
   }
 
-  def getStream(id: Int): JsValue = {
+  def getStream(id: Int): Option[StreamModel] = {
     db.withConnection { conn =>
       // TODO store start time, end time and parameter list in the row and update them when the update stream endpoint is called.
       // Then simplify this query to not calculate them on the fly.
       val query = "SELECT row_to_json(t,true) As my_stream FROM " +
         "(SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::text, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
         "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time,to_char(end_time AT TIME " +
-        "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time,params FROM streams WHERE gid=?) As t;"
+        "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams WHERE gid=?) As t;"
 
       // Set query parameters into proper positions in statement
       val st = conn.prepareStatement(query)
       st.setInt(1, id)
       val rs = st.executeQuery()
-      rs.next()
-      val data = rs.getString(1)
+
+      var stream:Option[StreamModel] = None
+      while(rs.next()) {
+        val data = rs.getString(1)
+        stream = Some(Json.parse(data).as[StreamModel])
+      }
       rs.close()
       st.close()
-      Json.parse(data)
+      stream
     }
   }
 
-  def patchStreamMetadata(id: Int, data: String): JsValue = {
+  def patchStreamMetadata(id: Int, data: String): Option[StreamModel] = {
     db.withConnection { conn =>
       val query = "SELECT row_to_json(t, true) AS my_stream FROM (" +
         "SELECT metadata As properties FROM streams " +
@@ -117,19 +122,18 @@ class PostgresStreams @Inject()(db: Database, sensors: Sensors) extends Streams 
     }
   }
 
-  def searchStreams(geocode: Option[String], stream_name: Option[String]): Option[String] = {
+  def searchStreams(geocode: Option[String], stream_name: Option[String]): List[StreamModel] = {
     db.withConnection { conn =>
       val parts = geocode match {
         case Some(x) => x.split(",")
         case None => Array[String]()
       }
-      var data = ""
       var i = 0
-      var query = "SELECT array_to_json(array_agg(t),true) As my_places FROM " +
+      var query = "SELECT row_to_json(t,true) As my_places FROM " +
         "(SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::text, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
         "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(end_time AT TIME " +
-        "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params FROM streams"
+        "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams"
       if (parts.length == 3) {
         query += " WHERE ST_DWithin(geog, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)"
         if (stream_name.isDefined) {
@@ -144,11 +148,11 @@ class PostgresStreams @Inject()(db: Database, sensors: Sensors) extends Streams 
         }
         query += "ST_MakePoint(?, ?)])), geog)"
         if (stream_name.isDefined) {
-          query += " AND name = ?"
+          query += " AND name = ? "
         }
       } else if (parts.length == 0) {
         if (stream_name.isDefined) {
-          query += " WHERE name = ?"
+          query += " WHERE name = ? "
         }
       }
       query += ") As t;"
@@ -176,17 +180,18 @@ class PostgresStreams @Inject()(db: Database, sensors: Sensors) extends Streams 
         st.setString(1, stream_name.getOrElse(""))
       }
       st.setFetchSize(50)
-      Logger.debug("Sensors search statement: " + st)
+      Logger.debug("Stream search statement: " + st)
       val rs = st.executeQuery()
+
+      var streams:ListBuffer[StreamModel] = ListBuffer()
+
       while (rs.next()) {
-        data += rs.getString(1)
-        Logger.debug("Sensor found: " + data)
+        val data = rs.getString(1)
+        streams += Json.parse(data).as[StreamModel]
       }
       rs.close()
       st.close()
-      Logger.debug("Searching streams result: " + data)
-      if (data == "null") None // FIXME
-      else Some(data)
+      streams.toList
     }
   }
 
