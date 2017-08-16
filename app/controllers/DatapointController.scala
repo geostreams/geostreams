@@ -51,8 +51,15 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
     * @param id
     */
   def deleteDatapoint(id: Int) = Action {
-    datapoints.deleteDatapoint(id)
-    Ok(Json.obj("status" -> "OK"))
+    datapoints.getDatapoint(id) match {
+      case Some(datapoint) => {
+        datapoints.deleteDatapoint(id)
+        Ok(Json.obj("status" -> "OK"))
+      }
+      case None => NotFound(Json.obj("message" -> "Datapoint not found."))
+
+    }
+
   }
 
   def searchDatapoints(operator: String, since: Option[String], until: Option[String], geocode: Option[String],

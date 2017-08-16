@@ -59,7 +59,6 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     * @return
     */
   def getStream(id: Int) = Action {
-    val stream = streams.getStream(id)
     streams.getStream(id) match {
       case Some(stream) =>  Ok(Json.obj("status" -> "ok", "stream" -> stream))
       case None => NotFound(Json.obj("message" -> "Stream not found."))
@@ -73,20 +72,27 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     * @param id
     * @return new stream
     */
-  def patchStreamMetadata(id: Int) = Action(parse.json) { implicit request =>
-    request.body.validate[(JsValue)].map {
-      case (data) => {
-        val stream = streams.patchStreamMetadata(id, Json.stringify(data))
-        Ok(Json.obj("status" -> "update", "stream" -> stream))
-        //TODO: return null stream id is not found
-        // match {
-//              case Some(d) => Ok(Json.obj("status" -> d))
-//              case None => BadRequest(Json.obj("status" ->"Failed to update stream"))
-//            }
+  def patchStreamMetadata(id: Int) = Action(parse.json) { implicit request => {
+    streams.getStream(id) match {
+      case Some(stream) => {
+        request.body.validate[(JsValue)].map {
+          case (data) => {
+            val stream = streams.patchStreamMetadata(id, Json.stringify(data))
+            Ok(Json.obj("status" -> "update", "stream" -> stream))
+            //TODO: return null stream id is not found
+            // match {
+            //              case Some(d) => Ok(Json.obj("status" -> d))
+            //              case None => BadRequest(Json.obj("status" ->"Failed to update stream"))
+            //            }
+          }
+        }.recoverTotal {
+          e => BadRequest("Detected error:" + JsError.toFlatJson(e))
         }
-    }.recoverTotal {
-      e => BadRequest("Detected error:" + JsError.toFlatJson(e))
+      }
+      case None => NotFound(Json.obj("message" -> "Stream not found."))
     }
+  }
+
   }
 
   /**
@@ -94,8 +100,14 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     *
     */
   def updateStatisticsStream(id: Int) = Action {
-    streams.updateStreamStats(Some(id))
-    Ok(Json.obj("status" -> "update"))
+    streams.getStream(id) match {
+      case Some(stream) => {
+        streams.updateStreamStats(Some(stream.id))
+        Ok(Json.obj("status" -> "update"))
+      }
+      case None => NotFound(Json.obj("message" -> "Stream not found."))
+    }
+
   }
 
   /**
@@ -115,7 +127,13 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     * @param id
     */
   def deleteStream(id: Int) = Action {
-    streams.deleteStream(id)
-    Ok(Json.obj("status" -> "ok"))
+    streams.getStream(id) match {
+      case Some(stream) => {
+        streams.deleteStream(stream.id)
+        Ok(Json.obj("status" -> "ok"))
+      }
+      case None => NotFound(Json.obj("message" -> "Stream not found."))
+    }
+
   }
 }

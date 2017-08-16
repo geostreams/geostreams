@@ -105,11 +105,19 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @return sensor definition
     */
   def getSensorStatistics(id: Int) = Action {
-    val data = sensors.getSensorStats(id)
-    Ok(Json.obj("status" -> "OK",
-      "range" -> Map[String, JsValue]("min_start_time" -> (data \ "min_start_time").getOrElse(JsNull),
-        "max_end_time" -> (data \ "max_end_time").getOrElse(JsNull)),
-      "parameters" -> (data \ "parameters").getOrElse(JsNull)))
+    sensors.getSensor(id) match {
+      case Some(sensor) => {
+        val data = sensors.getSensorStats(sensor.id)
+        Ok(Json.obj("status" -> "OK",
+          "id" -> sensor.id,
+          "name" -> sensor.name,
+          "range" -> Map[String, JsValue]("min_start_time" -> (data \ "min_start_time").getOrElse(JsNull),
+          "max_end_time" -> (data \ "max_end_time").getOrElse(JsNull)),
+          "parameters" -> (data \ "parameters").getOrElse(JsNull)))
+
+      }
+      case None => NotFound(Json.obj("message" -> "Sensor not found."))
+    }
 
   }
 
@@ -120,8 +128,13 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @return list of streams<id, name>
     */
   def getSensorStreams(id: Int) = Action {
-    val streams = sensors.getSensorStreams(id)
-    Ok(Json.obj("status" -> "OK", "streams" -> streams))
+    sensors.getSensor(id) match {
+      case Some(sensor) => {
+        val streams = sensors.getSensorStreams(sensor.id)
+        Ok(Json.obj("status" -> "OK", "streams" -> streams))
+      }
+      case None => NotFound(Json.obj("message" -> "Sensor not found."))
+    }
   }
 
   /**
@@ -131,8 +144,14 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @return
     */
   def updateStatisticsSensor(id: Int) = Action { implicit request =>
-    sensors.updateSensorStats(Some(id))
-    Ok(Json.obj("status" -> "update"))
+    sensors.getSensor(id) match {
+      case Some(sensor) => {
+        sensors.updateSensorStats(Some(sensor.id))
+        Ok(Json.obj("status" -> "update"))
+      }
+      case None => NotFound(Json.obj("message" -> "Sensor not found."))
+    }
+
   }
 
   /**
@@ -161,7 +180,13 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @param id
     */
   def deleteSensor(id: Int) = Action {
-    sensors.deleteSensor(id)
-    Ok(Json.obj("status" -> "OK"))
+    sensors.getSensor(id) match {
+      case Some(sensor) => {
+        sensors.deleteSensor(sensor.id)
+        Ok(Json.obj("status" -> "OK"))
+      }
+      case None => NotFound(Json.obj("message" -> "Sensor not found."))
+    }
+
   }
 }
