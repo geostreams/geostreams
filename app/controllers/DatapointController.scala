@@ -62,6 +62,11 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
 
   }
 
+  def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String]) = Action {
+    datapoints.renameParam(oldParam, newParam, source, region)
+    Ok(Json.obj("status" -> "OK"))
+  }
+
   def searchDatapoints(operator: String, since: Option[String], until: Option[String], geocode: Option[String],
     stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
     format: String, semi: Option[String], onlyCount: Boolean) = Action {

@@ -6,7 +6,7 @@ import play.api.Logger
 import util.Parsers
 import scala.collection.mutable.ListBuffer
 
-import db.Datapoints
+import db.{Datapoints, Sensors}
 import model.DatapointModel
 import play.api.libs.json.{JsObject, JsValue, Json, __}
 import play.api.db.Database
@@ -19,7 +19,7 @@ import java.sql.Timestamp
 /**
   * Store datapoints in Postgres.
   */
-class PostgresDatapoints @Inject()(db: Database) extends Datapoints {
+class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datapoints {
   def addDatapoint(datapoint: DatapointModel): Int = {
     db.withConnection { conn =>
       val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
@@ -236,12 +236,45 @@ class PostgresDatapoints @Inject()(db: Database) extends Datapoints {
 
   def deleteDatapoint(id: Int): Unit = {
     db.withConnection { conn =>
-      val query = "DELETE FROM datapoints where gid = ?"
+      val query = "DELETE FROM datapoints WHERE gid = ?"
       val st = conn.prepareStatement(query)
       st.setInt(1, id)
-      Logger.debug("Deleting datapoint statement: " + st)
       st.execute()
       st.close
+    }
+  }
+
+  def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String]): Unit ={
+    db.withConnection { conn =>
+      val query = "UPDATE datapoints SET data = replace(data::text, ?, ?)::json"
+      val queryConditionStart = " WHERE gid in (SELECT datapoints.gid FROM datapoints, streams, sensors WHERE sensors.gid " +
+        "= streams.sensor_id AND datapoints.stream_id = streams.gid"
+      val queryCondition = (source, region) match {
+        case (Some(s), Some(r)) => queryConditionStart + " AND json_extract_path_text(sensors.metadata,'type','id') " +
+      "= ? AND sensors.metadata ->> 'region'::text LIKE ?)"
+        case (Some(s), None) => queryConditionStart + " AND json_extract_path_text(sensors.metadata,'type','id') = ? )"
+        case (None, Some(r)) => queryConditionStart + " AND sensors.metadata ->> 'region'::text LIKE ? )"
+        case (None, None) => "" //no need to link sensors and streams
+      }
+
+      val st = conn.prepareStatement(query + queryCondition)
+      st.setString(1, oldParam)
+      st.setString(2, newParam)
+      if(source.isDefined) {
+        st.setString(3, source.get)
+        if(region.isDefined){
+          st.setString(4, region.get)
+        }
+      } else {
+        if(region.isDefined){
+          st.setString(3, region.get)
+        }
+      }
+
+      st.execute()
+      st.close
+
+      sensors.updateSensorStats(None)
     }
   }
 
