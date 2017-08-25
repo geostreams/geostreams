@@ -55,7 +55,6 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
 
   def getDatapoint(id: Int): Option[DatapointModel] = {
     db.withConnection { conn =>
-      var data = ""
       val query = "SELECT row_to_json(t,true) As my_datapoint FROM " +
         "(SELECT datapoints.gid As id, " +
         "to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
