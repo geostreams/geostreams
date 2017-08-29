@@ -7,4 +7,5 @@ target
 /.settings
 /RUNNING_PID
 /generated-test
+/conf/application.conf
 .DS_Store

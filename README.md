@@ -8,3 +8,7 @@ Geospatial and temporal API backed by [PostgreSQL](https://www.postgresql.org/) 
 
 Previous version available in [Clowder](https://clowder.ncsa.illinois.edu/). Version 2 is standalone to simplify 
 dependency management and deployment. It updates many of the dependencies and cleans up much of the code.
+
+**For Developers**
+You need to create a file `conf/application.conf` before running the application locally.
+The values from `conf/reference.conf` will be used as the default configuration and can be overriden by `conf/application.conf`
