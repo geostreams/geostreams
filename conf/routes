@@ -36,7 +36,8 @@ GET           /api/datapoints/trends                        controllers.Datapoin
 GET           /api/datapoints/bin/:time/:depth              controllers.DatapointController.binDatapoints(time, depth: Double, raw: Boolean ?= false, since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty)
 GET           /api/datapoints/:id                           controllers.DatapointController.getDatapoint(id: Int)
 GET           /api/datapoints                               controllers.DatapointController.searchDatapoints(operator = "", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
-GET           /api/datapoints/trendsRegion/:attribute       controllers.DatapointController.trendsByRegion(attribute: String)
+GET           /api/trends/region/:attribute                 controllers.DatapointController.trendsByRegion(attribute: String, geocode: String, season: String ?= "spring")
+GET           /api/trends/region/detail/:attribute          controllers.DatapointController.trendsByRegionDetail(attribute: String, geocode: String, season: String ?= "spring")
 
 # Cache
 GET           /api/cache                                    controllers.CacheController.cacheListAction

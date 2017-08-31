@@ -14,6 +14,7 @@ trait Datapoints {
   def getDatapoint(id: Int): Option[DatapointModel]
   def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String], sensor_id: Option[String],
                        source: List[String], attributes: List[String], sortByStation: Boolean): Iterator[JsObject]
+  def trendsByRegion(attribute: String, geocode: String): List[JsValue]
   def deleteDatapoint(id: Int): Unit
   def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String])
 }

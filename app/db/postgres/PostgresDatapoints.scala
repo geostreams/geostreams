@@ -2,19 +2,19 @@ package db.postgres
 
 import java.sql.{SQLException, Statement}
 import javax.inject.Inject
-import play.api.Logger
-import util.Parsers
-import scala.collection.mutable.ListBuffer
 
+import util.Parsers
 import db.{Datapoints, Sensors}
 import model.DatapointModel
-import play.api.libs.json.{JsObject, JsValue, Json, __}
-import play.api.db.Database
 import model.DatapointModel._
 import java.text.SimpleDateFormat
+import java.sql.Timestamp
+
+import scala.collection.mutable.ListBuffer
+import play.api.libs.json.{JsObject, JsValue, Json, __}
+import play.api.db.Database
 import play.api.libs.json._
 import play.api.libs.json.Json._
-import java.sql.Timestamp
 
 /**
   * Store datapoints in Postgres.
@@ -67,7 +67,6 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
         "WHERE datapoints.gid=? AND sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid) As t;"
       val st = conn.prepareStatement(query)
       st.setInt(1, id)
-      Logger.debug("Datapoints get statement: " + st)
       val rs = st.executeQuery()
 
       var datapoint:Option[DatapointModel] = None
@@ -89,7 +88,11 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
         case None => Array[String]()
       }
       var query = "SELECT to_json(t) As datapoint FROM " +
-        "(SELECT datapoints.gid As id, to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, data As properties, 'Feature' As type, ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, stream_id::int, sensor_id::int, sensors.name as sensor_name FROM sensors, streams, datapoints" +
+        "(SELECT datapoints.gid As id, to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS " +
+        "created, to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, " +
+        "to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, data As properties, " +
+        "'Feature' As type, ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, stream_id::int, sensor_id::int, " +
+        "sensors.name as sensor_name FROM sensors, streams, datapoints" +
         " WHERE sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid"
 
       if (since.isDefined) query += " AND datapoints.start_time >= ?"
@@ -192,7 +195,6 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
         st.setInt(i, sensor_id.get.toInt)
       }
       st.setFetchSize(50)
-      Logger.debug("Datapoints search statement: " + st)
       val rs = st.executeQuery()
 
       new Iterator[JsObject] {
@@ -230,6 +232,48 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
           }
         }
       }
+    }
+  }
+
+  def trendsByRegion(attribute: String, geocode: String): List[JsValue] = {
+    db.withConnection { conn =>
+      var query = "SELECT to_json(t) As datapoint FROM (SELECT (datapoints.data ->> ?)::text AS data, " +
+        "to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS time FROM sensors, streams, " +
+        "datapoints WHERE sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid AND datapoints.data ?? ? "
+      query += " AND ST_Covers(ST_MakePolygon(ST_MakeLine(ARRAY["
+      val parts = geocode.split(",")
+      var j = 0
+      while (j < parts.length) {
+        query += "ST_MakePoint(?, ?), "
+        j += 2
+      }
+      query += "ST_MakePoint(?, ?)])), datapoints.geog)"
+
+      query += ") AS t; "
+      val st = conn.prepareStatement(query)
+
+      st.setString(1, attribute)
+      st.setString(2, attribute)
+      j = 0
+      while (j < parts.length) {
+        st.setDouble(j + 3, parts(j + 1).toDouble)
+        st.setDouble(j + 4, parts(j).toDouble)
+        j += 2
+      }
+      st.setDouble(j + 3, parts(1).toDouble)
+      st.setDouble(j + 4, parts(0).toDouble)
+      // for test
+      // println(st.toString)
+
+      val rs = st.executeQuery()
+      var filtereddata: ListBuffer[JsValue] = ListBuffer()
+      while (rs.next()) {
+        val data = rs.getString(1)
+        filtereddata += Json.parse(data)
+      }
+      rs.close()
+      st.close()
+      filtereddata.toList
     }
   }
 

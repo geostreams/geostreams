@@ -10,6 +10,15 @@ import play.api.libs.json._
   * Parse methods.
   */
 object Parsers {
+
+  /**
+    * Given the JsLookupResult return a DateTime. This will ignore any starting and ending quotes.
+    *
+    * @param s the value to parse
+    * @return returns Some(DateTime) if it worked, or None if not.
+    */
+  def parseDouble(s: JsLookupResult) : Option[Double] = parseDouble(s.getOrElse(Json.obj()))
+
   /**
     * Given the JsValue return a double. This will ignore any starting and ending quotes.
     *
@@ -25,6 +34,14 @@ object Parsers {
     * @return returns Some(double) if it worked, or None if not.
     */
   def parseDouble(s: String) : Option[Double] = try { Some(parseString(s).toDouble) } catch { case _ : NumberFormatException => None }
+
+  /**
+    * Given the JsLookupResult return a DateTime. This will ignore any starting and ending quotes.
+    *
+    * @param s the value to parse
+    * @return returns Some(DateTime) if it worked, or None if not.
+    */
+  def parseDate(s: JsLookupResult) : Option[DateTime] = parseDate(s.getOrElse(Json.obj()))
 
   /**
     * Given the JsValue return a DateTime. This will ignore any starting and ending quotes.
@@ -43,7 +60,7 @@ object Parsers {
   def parseDate(s: String) : Option[DateTime] = try { Some(DateTime.parse(parseString(s).replace(" ", "T"))) } catch { case x: Exception => None }
 
   /**
-    * Given the JsValue, strip off any quotes from beginning and end.
+    * Given the JsLookupResult, strip off any quotes from beginning and end.
     *
     * @param s the JsValue to be cleaned
     * @return the cleaned up JsValue as string.
