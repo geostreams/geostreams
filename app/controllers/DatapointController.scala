@@ -123,20 +123,34 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
     val rawdata = datapoints.trendsByRegion(attribute, geocode)
     // for debug
     //println(rawdata.head)
-    val dataWithSeason = rawdata.filter(data => checkSeason(season, (data.\("time")).as[String]))
+    var lastDateString: String = new DateTime().withYear(1800).toString
+    val dataWithSeason = rawdata.filter{data =>
+      val tmpTime = (data.\("time")).as[String]
+      lastDateString = if(lastDateString > tmpTime)  lastDateString else  tmpTime
+      checkSeason(season, tmpTime)}
 
     // refine dataWithSeason by convert List(data, time) to List[Double], also remove data as NAN
-    var tenyearsago = new DateTime()
-    tenyearsago = tenyearsago.minusYears(10)
+    var lastDate = new DateTime(lastDateString)
+    // the last year only has spring data but season is summer, last is set to the year before.
+    if(season == "summer"  && !checkSeason(season, lastDate)) {
+      lastDate = lastDate.minusYears(1)
+    }
+    val lastYear = new DateTime(lastDate.getYear(), 1, 1, 1, 1)
+    val tenyearsago = lastYear.minusYears(9)
+    Logger.debug("trendsByRegion last date: " + lastDate)
+    Logger.debug("trendsByRegion last year: " + lastYear)
+    Logger.debug("trendsByRegion last 10 years: " + tenyearsago)
 
     val dataWholeYear: List[Double] = dataWithSeason.map(d => Parsers.parseDouble(d.\("data"))).flatten
     val dataTenYears: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time")).getOrElse(new DateTime()).isAfter(tenyearsago))
       .map(d => Parsers.parseDouble(d.\("data"))).flatten
+    val dataLastYear: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time")).getOrElse(new DateTime()).isAfter(lastYear))
+      .map(d => Parsers.parseDouble(d.\("data"))).flatten
 
-    //create the result Jsobject
-    // TODO: lastaverage, the lastest data or the average of last year?
+    // create the result Jsobject
     var trendsdata:JsObject = Json.obj("totalaverage" -> dataWholeYear.sum / dataWholeYear.length,
-          "tenyearsaverage" -> dataTenYears.sum / dataTenYears.length, "lastaverage" -> 0)
+          "tenyearsaverage" -> dataTenYears.sum / dataTenYears.length,
+          "lastaverage" -> dataLastYear.sum / dataLastYear.length)
 
     Ok(Json.obj("status" -> "OK", "trends" -> trendsdata))
   }
