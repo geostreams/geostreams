@@ -4,59 +4,59 @@
 # ~~~~
 
 # An example controller showing a sample home page
-GET           /                                             controllers.HomeController.index
-GET           /api/geostreams/*page                         controllers.HomeController.oldApi(page)
+GET           /                                                         controllers.HomeController.index
+GET           /api/geostreams/*page                                     controllers.HomeController.oldApi(page)
 
 # Sensors
-GET           /api/sensors/:id                              controllers.SensorController.sensorGet(id: Int)
-POST          /api/sensors                                  controllers.SensorController.sensorCreate
-PUT           /api/sensors/update                           controllers.SensorController.updateStatisticsStreamSensor()
-PUT           /api/sensors/:id                              controllers.SensorController.updateSensorMetadata(id: Int)
-GET           /api/sensors/:id/stats                        controllers.SensorController.getSensorStatistics(id: Int)
-GET           /api/sensors/:id/streams                      controllers.SensorController.getSensorStreams(id: Int)
-PUT           /api/sensors/:id/update                       controllers.SensorController.updateStatisticsSensor(id: Int)
-GET           /api/sensors                                  controllers.SensorController.searchSensors(geocode: Option[String] ?= None, sensor_name: Option[String] ?= None)
-DELETE        /api/sensors/:id                              controllers.SensorController.deleteSensor(id: Int)
+GET           /api/sensors/:id                                          controllers.SensorController.sensorGet(id: Int)
+POST          /api/sensors                                              controllers.SensorController.sensorCreate
+PUT           /api/sensors/update                                       controllers.SensorController.sensorUpdateStatisticsStream()
+PUT           /api/sensors/:id                                          controllers.SensorController.sensorUpdateMetadata(id: Int)
+GET           /api/sensors/:id/stats                                    controllers.SensorController.sensorGetStatistics(id: Int)
+GET           /api/sensors/:id/streams                                  controllers.SensorController.sensorGetStreams(id: Int)
+PUT           /api/sensors/:id/update                                   controllers.SensorController.sensorUpdateStatistics(id: Int)
+GET           /api/sensors                                              controllers.SensorController.sensorsSearch(geocode: Option[String] ?= None, sensor_name: Option[String] ?= None)
+DELETE        /api/sensors/:id                                          controllers.SensorController.sensorDelete(id: Int)
 
 # Streams
-POST          /api/streams                                  controllers.StreamController.createStream
-PUT           /api/streams/update                           controllers.StreamController.updateStatisticsStreamSensor()
-GET           /api/streams/:id                              controllers.StreamController.getStream(id: Int)
-PUT           /api/streams/:id                              controllers.StreamController.patchStreamMetadata(id: Int)
-GET           /api/streams/:id/update                       controllers.StreamController.updateStatisticsStream(id: Int)
-GET           /api/streams                                  controllers.StreamController.searchStreams(geocode: Option[String] ?= None, stream_name: Option[String] ?= None)
-DELETE        /api/streams/:id                              controllers.StreamController.deleteStream(id: Int)
+POST          /api/streams                                              controllers.StreamController.streamCreate
+PUT           /api/streams/update                                       controllers.StreamController.streamUpdateStatisticsSensor()
+GET           /api/streams/:id                                          controllers.StreamController.streamGet(id: Int)
+PUT           /api/streams/:id                                          controllers.StreamController.streamPatchMetadata(id: Int)
+GET           /api/streams/:id/update                                   controllers.StreamController.streamUpdateStatistics(id: Int)
+GET           /api/streams                                              controllers.StreamController.streamsSearch(geocode: Option[String] ?= None, stream_name: Option[String] ?= None)
+DELETE        /api/streams/:id                                          controllers.StreamController.streamDelete(id: Int)
 
 # Datapoints
-POST          /api/datapoints                               controllers.DatapointController.addDatapoint(invalidateCache: Boolean ?= true)
-DELETE        /api/datapoints/:id                           controllers.DatapointController.deleteDatapoint(id: Int)
-PUT           /api/datapoints/renameParam/:oldParam/:newParam        controllers.DatapointController.renameParam(oldParam: String, newParam: String, source: Option[String] ?= None, region: Option[String] ?= None)
-GET           /api/datapoints/averages                      controllers.DatapointController.searchDatapoints(operator = "averages", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
-GET           /api/datapoints/trends                        controllers.DatapointController.searchDatapoints(operator = "trends", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
-GET           /api/datapoints/bin/:time/:depth              controllers.DatapointController.binDatapoints(time, depth: Double, raw: Boolean ?= false, since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty)
-GET           /api/datapoints/:id                           controllers.DatapointController.getDatapoint(id: Int)
-GET           /api/datapoints                               controllers.DatapointController.searchDatapoints(operator = "", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
-GET           /api/trends/region/:attribute                 controllers.DatapointController.trendsByRegion(attribute: String, geocode: String, season: String ?= "spring")
-GET           /api/trends/region/detail/:attribute          controllers.DatapointController.trendsByRegionDetail(attribute: String, geocode: String, season: String ?= "spring")
+POST          /api/datapoints                                           controllers.DatapointController.datapointCreate(invalidateCache: Boolean ?= true)
+DELETE        /api/datapoints/:id                                       controllers.DatapointController.datapointDelete(id: Int)
+PUT           /api/datapoints/renameParam/:oldParam/:newParam           controllers.DatapointController.renameParam(oldParam: String, newParam: String, source: Option[String] ?= None, region: Option[String] ?= None)
+GET           /api/datapoints/averages                                  controllers.DatapointController.datapointSearch(operator = "averages", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
+GET           /api/datapoints/trends                                    controllers.DatapointController.datapointSearch(operator = "trends", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
+GET           /api/datapoints/bin/:time/:depth                          controllers.DatapointController.datapointsBin(time, depth: Double, raw: Boolean ?= false, since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty)
+GET           /api/datapoints/:id                                       controllers.DatapointController.datapointGet(id: Int)
+GET           /api/datapoints                                           controllers.DatapointController.datapointSearch(operator = "", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
+GET           /api/trends/region/:attribute                             controllers.DatapointController.trendsByRegion(attribute: String, geocode: String, season: String ?= "spring")
+GET           /api/trends/region/detail/:attribute                      controllers.DatapointController.trendsByRegionDetail(attribute: String, geocode: String, season: String ?= "spring")
 
 # Cache
-GET           /api/cache                                    controllers.CacheController.cacheListAction
-GET           /api/cache/invalidate                         controllers.CacheController.cacheInvalidateAction(sensor_id: Option[String] ?= None, stream_id: Option[String] ?= None)
-GET           /api/cache/:id                                controllers.CacheController.cacheFetchAction(id)
+GET           /api/cache                                                controllers.CacheController.cacheListAction
+GET           /api/cache/invalidate                                     controllers.CacheController.cacheInvalidateAction(sensor_id: Option[String] ?= None, stream_id: Option[String] ?= None)
+GET           /api/cache/:id                                            controllers.CacheController.cacheFetchAction(id)
 
 # Admin
-DELETE        /api/dropall                                  controllers.AdminController.deleteAll
-GET           /api/counts                                   controllers.AdminController.counts
-GET           /api/config                                   controllers.AdminController.getConfig
+DELETE        /api/dropall                                              controllers.AdminController.deleteAll
+GET           /api/counts                                               controllers.AdminController.counts
+GET           /api/config                                               controllers.AdminController.getConfig
 
 # Testing postgres connection
-GET           /postgresql                                   controllers.DBController.index
+GET           /postgresql                                               controllers.DBController.index
 
 # Map static resources from the /public folder to the /assets URL path
-GET           /assets/*file                                 controllers.Assets.versioned(path="/public", file: Asset)
+GET           /assets/*file                                             controllers.Assets.versioned(path="/public", file: Asset)
 
 # Examples
-GET           /user                                         controllers.UserController.userGet
-POST          /user                                         controllers.UserController.userPost
-PUT           /sensor                                       controllers.SensorController.sensorFormPost
-GET           /sensor                                       controllers.SensorController.sensorFormGet
+GET           /user                                                     controllers.UserController.userGet
+POST          /user                                                     controllers.UserController.userPost
+PUT           /sensor                                                   controllers.SensorController.sensorFormPost
+GET           /sensor                                                   controllers.SensorController.sensorFormGet

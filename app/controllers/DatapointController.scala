@@ -39,7 +39,7 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
     *
     * @return id
     */
-  def addDatapoint(invalidateCache: Boolean) = Action(parse.json) { implicit request =>
+  def datapointCreate(invalidateCache: Boolean) = Action(parse.json) { implicit request =>
     Logger.debug("Adding datapoint: " + request.body)
 
     val datapointResult = request.body.validate[DatapointModel]
@@ -63,7 +63,7 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
     *
     * @param id
     */
-  def deleteDatapoint(id: Int) = Action {
+  def datapointDelete(id: Int) = Action {
     datapoints.getDatapoint(id) match {
       case Some(datapoint) => {
         datapoints.deleteDatapoint(id)
@@ -80,13 +80,13 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
     Ok(Json.obj("status" -> "OK"))
   }
 
-  def searchDatapoints(operator: String, since: Option[String], until: Option[String], geocode: Option[String],
-                       stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
-                       format: String, semi: Option[String], onlyCount: Boolean) = Action { implicit request =>
+  def datapointSearch(operator: String, since: Option[String], until: Option[String], geocode: Option[String],
+                      stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
+                      format: String, semi: Option[String], onlyCount: Boolean) = Action { implicit request =>
     NotImplemented
   }
 
-  def binDatapoints(time: String, depth: Double, keepRaw: Boolean, since: Option[String], until: Option[String],
+  def datapointsBin(time: String, depth: Double, keepRaw: Boolean, since: Option[String], until: Option[String],
                     geocode: Option[String], stream_id: Option[String], sensor_id: Option[String], sources: List[String],
                     attributes: List[String]) =  Action {
     NotImplemented
@@ -165,7 +165,7 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
     *
     * @param id
     */
-  def getDatapoint(id: Int) = Action {
+  def datapointGet(id: Int) = Action {
     datapoints.getDatapoint(id) match {
       case Some(datapoint) => Ok(Json.obj("status" -> "OK", "datapoint" -> datapoint))
       case None => NotFound(Json.obj("message" -> "Datapoint not found."))

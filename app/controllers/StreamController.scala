@@ -28,7 +28,7 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     *
     * @return id
     */
-  def createStream = Action(BodyParsers.parse.json) { implicit request =>
+  def streamCreate = Action(BodyParsers.parse.json) { implicit request =>
     val streamResult = request.body.validate[StreamModel]
     streamResult.fold(
       errors => {
@@ -46,7 +46,7 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     * Duplicate with Sensor.updateStatisticsStreamSensor
     *
     */
-  def updateStatisticsStreamSensor() = Action {
+  def streamUpdateStatisticsSensor() = Action {
     sensors.updateSensorStats(None)
     Ok(Json.obj("status" -> "update"))
   }
@@ -58,7 +58,7 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     * @param id
     * @return
     */
-  def getStream(id: Int) = Action {
+  def streamGet(id: Int) = Action {
     streams.getStream(id) match {
       case Some(stream) =>  Ok(Json.obj("status" -> "ok", "stream" -> stream))
       case None => NotFound(Json.obj("message" -> "Stream not found."))
@@ -72,7 +72,7 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     * @param id
     * @return new stream
     */
-  def patchStreamMetadata(id: Int) = Action(parse.json) { implicit request => {
+  def streamPatchMetadata(id: Int) = Action(parse.json) { implicit request => {
     streams.getStream(id) match {
       case Some(stream) => {
         request.body.validate[(JsValue)].map {
@@ -99,7 +99,7 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     * Update "min_start_time", "max_end_time", "params" element of stream.
     *
     */
-  def updateStatisticsStream(id: Int) = Action {
+  def streamUpdateStatistics(id: Int) = Action {
     streams.getStream(id) match {
       case Some(stream) => {
         streams.updateStreamStats(Some(stream.id))
@@ -116,7 +116,7 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     * @param geocode, stream_name
     * @return stream
     */
-  def searchStreams(geocode: Option[String], stream_name: Option[String]) = Action {
+  def streamsSearch(geocode: Option[String], stream_name: Option[String]) = Action {
     val searchStreams = streams.searchStreams(geocode, stream_name)
     Ok(Json.obj("status" -> "ok", "streams" -> searchStreams))
   }
@@ -126,7 +126,7 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
     *
     * @param id
     */
-  def deleteStream(id: Int) = Action {
+  def streamDelete(id: Int) = Action {
     streams.getStream(id) match {
       case Some(stream) => {
         streams.deleteStream(stream.id)
