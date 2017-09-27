@@ -126,15 +126,15 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
     var lastDateString: String = new DateTime().withYear(1800).toString
     val dataWithSeason = rawdata.filter{data =>
       val tmpTime = (data.\("time")).as[String]
-      lastDateString = if(lastDateString > tmpTime)  lastDateString else  tmpTime
-      checkSeason(season, tmpTime)}
+      val matchSeason = checkSeason(season, tmpTime)
+      if(matchSeason) {
+        lastDateString = if(lastDateString > tmpTime) lastDateString else tmpTime
+      }
+      matchSeason
+    }
 
     // refine dataWithSeason by convert List(data, time) to List[Double], also remove data as NAN
     var lastDate = new DateTime(lastDateString)
-    // the last year only has spring data but season is summer, last is set to the year before.
-    if(season == "summer"  && !checkSeason(season, lastDate)) {
-      lastDate = lastDate.minusYears(1)
-    }
     val lastYear = new DateTime(lastDate.getYear(), 1, 1, 1, 1)
     val tenyearsago = lastYear.minusYears(9)
     Logger.debug("trendsByRegion last date: " + lastDate)
