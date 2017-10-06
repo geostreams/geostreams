@@ -88,7 +88,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @param id
     * @return new sensor definition
     */
-  def updateSensorMetadata(id: Int) = Action(parse.json) { implicit request =>
+  def sensorUpdateMetadata(id: Int) = Action(parse.json) { implicit request =>
     request.body.validate[(JsObject)].map {
       case (body) =>
         val updatedSensor = sensors.updateSensorMetadata(id, body)
@@ -104,7 +104,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @param id
     * @return sensor definition
     */
-  def getSensorStatistics(id: Int) = Action {
+  def sensorGetStatistics(id: Int) = Action {
     sensors.getSensor(id) match {
       case Some(sensor) => {
         val data = sensors.getSensorStats(sensor.id)
@@ -127,7 +127,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @param id
     * @return list of streams<id, name>
     */
-  def getSensorStreams(id: Int) = Action {
+  def sensorGetStreams(id: Int) = Action {
     sensors.getSensor(id) match {
       case Some(sensor) => {
         val streams = sensors.getSensorStreams(sensor.id)
@@ -143,7 +143,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @param id
     * @return
     */
-  def updateStatisticsSensor(id: Int) = Action { implicit request =>
+  def sensorUpdateStatistics(id: Int) = Action { implicit request =>
     sensors.getSensor(id) match {
       case Some(sensor) => {
         sensors.updateSensorStats(Some(sensor.id))
@@ -158,7 +158,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * Update "min_start_time", "max_end_time", "params" element of all senaors.
     *
     */
-  def updateStatisticsStreamSensor() = Action { implicit request =>
+  def sensorUpdateStatisticsStream() = Action { implicit request =>
     sensors.updateSensorStats(None)
     Ok(Json.obj("status" -> "update"))
   }
@@ -169,7 +169,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     * @param geocode, sensor_name
     * @return sensor
     */
-  def searchSensors(geocode: Option[String], sensor_name: Option[String]) = Action {
+  def sensorsSearch(geocode: Option[String], sensor_name: Option[String]) = Action {
 
     Ok(Json.obj("sensors" ->sensors.searchSensors(geocode, sensor_name)))
   }
@@ -179,7 +179,7 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
     *
     * @param id
     */
-  def deleteSensor(id: Int) = Action {
+  def sensorDelete(id: Int) = Action {
     sensors.getSensor(id) match {
       case Some(sensor) => {
         sensors.deleteSensor(sensor.id)
