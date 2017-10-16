@@ -29,6 +29,7 @@ DELETE        /api/streams/:id                                          controll
 
 # Datapoints
 POST          /api/datapoints                                           controllers.DatapointController.datapointCreate(invalidateCache: Boolean ?= true)
+POST          /api/datapoints/bulk                                      controllers.DatapointController.datapointsCreate(invalidateCache: Boolean ?= true)
 DELETE        /api/datapoints/:id                                       controllers.DatapointController.datapointDelete(id: Int)
 PUT           /api/datapoints/renameParam/:oldParam/:newParam           controllers.DatapointController.renameParam(oldParam: String, newParam: String, source: Option[String] ?= None, region: Option[String] ?= None)
 GET           /api/datapoints/averages                                  controllers.DatapointController.datapointSearch(operator = "averages", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
