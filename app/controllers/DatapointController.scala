@@ -49,8 +49,6 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
         BadRequest(Json.obj("status" -> "KO", "message" -> JsError.toJson(errors)))
       },
       datapoint => {
-        // TODO: add new type of datapoint with geometry is GeoJSON
-        // https://opensource.ncsa.illinois.edu/bitbucket/projects/CATS/repos/clowder/browse/app/api/Geostreams.scala?at=refs%2Ftags%2Fv1.3.1#427
         val id = datapoints.addDatapoint(datapoint)
         Ok(Json.obj("status" -> "ok", "id" -> id))
       }
@@ -70,8 +68,6 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
         BadRequest(Json.obj("status" -> "KO", "message" -> JsError.toJson(errors)))
       },
       datapointlist => {
-        // TODO: add new type of datapoint with geometry is GeoJSON
-        // https://opensource.ncsa.illinois.edu/bitbucket/projects/CATS/repos/clowder/browse/app/api/Geostreams.scala?at=refs%2Ftags%2Fv1.3.1#427
         val id = datapoints.addDatapoints(datapointlist)
         Ok(Json.obj("status" -> "ok", "id" -> id))
       }
