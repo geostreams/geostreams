@@ -68,11 +68,10 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
         BadRequest(Json.obj("status" -> "KO", "message" -> JsError.toJson(errors)))
       },
       datapointlist => {
-        val id = datapoints.addDatapoints(datapointlist)
-        Ok(Json.obj("status" -> "ok", "id" -> id))
+        val datapintCount = datapoints.addDatapoints(datapointlist)
+        Ok(Json.obj("status" -> "ok", "count" -> datapintCount))
       }
     )
-
   }
 
   /**
