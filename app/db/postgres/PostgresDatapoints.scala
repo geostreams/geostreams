@@ -53,6 +53,45 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
     }
   }
 
+  def addDatapoints(datapoints: List[DatapointModel]): Int = {
+    db.withConnection { conn =>
+      val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
+      var failedToParse: Option[JsError] = None;
+
+      var statement = "INSERT INTO datapoints(start_time, end_time, stream_id, data, geog, created) VALUES "
+      datapoints.foreach(f => {
+        statement += "(?, ?, ?, CAST(? AS jsonb), CAST(ST_GeomFromGeoJSON(?) AS geography), NOW()), "
+      })
+      // Remove trailing comma
+      statement = statement.substring(0, statement.length()-2) + ";"
+      val ps = conn.prepareStatement(statement, Statement.RETURN_GENERATED_KEYS)
+
+      var index = 0
+      datapoints.foreach(dp => {
+        // Set query parameters into proper positions in statement
+        val start = new Timestamp(formatter.parse(dp.start_time).getTime())
+        ps.setTimestamp(index+1, new Timestamp(start.getTime))
+        if (dp.end_time.isDefined) {
+          val end = new Timestamp(formatter.parse(dp.end_time.get).getTime())
+          ps.setTimestamp(index+2, new Timestamp(end.getTime))
+        }
+        else
+          ps.setDate(2, null)
+
+        ps.setInt(index+3, dp.stream_id)
+        ps.setString(index+4, Json.stringify(dp.properties))
+        ps.setString(index+5, Json.stringify(Json.toJson(dp.geometry)))
+        index += 5
+      })
+
+      // Execute query and get results
+      ps.executeUpdate()
+      val rs = ps.getUpdateCount
+      ps.close()
+      rs
+    }
+  }
+
   def getDatapoint(id: Int): Option[DatapointModel] = {
     db.withConnection { conn =>
       val query = "SELECT row_to_json(t,true) As my_datapoint FROM " +
