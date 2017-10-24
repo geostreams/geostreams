@@ -137,6 +137,7 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
   def trendsByRegion(attribute: String, geocode: String, season: String) = Action {
     // rawdata has 3 field: data, region, time.
     val rawdata = datapoints.trendsByRegion(attribute, geocode)
+
     // for debug
     //println(rawdata.head)
     var lastDateString: String = new DateTime().withYear(1800).toString
@@ -148,27 +149,31 @@ class DatapointController @Inject()(db: Database, datapoints: Datapoints) extend
       }
       matchSeason
     }
+    if(dataWithSeason.length > 0 ){
+      // refine dataWithSeason by convert List(data, time) to List[Double], also remove data as NAN
+      var lastDate = new DateTime(lastDateString)
+      val lastYear = new DateTime(lastDate.getYear(), 1, 1, 1, 1)
+      val tenyearsago = lastYear.minusYears(9)
+      Logger.debug("trendsByRegion last date: " + lastDate)
+      Logger.debug("trendsByRegion last year: " + lastYear)
+      Logger.debug("trendsByRegion last 10 years: " + tenyearsago)
 
-    // refine dataWithSeason by convert List(data, time) to List[Double], also remove data as NAN
-    var lastDate = new DateTime(lastDateString)
-    val lastYear = new DateTime(lastDate.getYear(), 1, 1, 1, 1)
-    val tenyearsago = lastYear.minusYears(9)
-    Logger.debug("trendsByRegion last date: " + lastDate)
-    Logger.debug("trendsByRegion last year: " + lastYear)
-    Logger.debug("trendsByRegion last 10 years: " + tenyearsago)
+      val dataWholeYear: List[Double] = dataWithSeason.map(d => Parsers.parseDouble(d.\("data"))).flatten
+      val dataTenYears: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time")).getOrElse(new DateTime()).isAfter(tenyearsago))
+        .map(d => Parsers.parseDouble(d.\("data"))).flatten
+      val dataLastYear: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time")).getOrElse(new DateTime()).isAfter(lastYear))
+        .map(d => Parsers.parseDouble(d.\("data"))).flatten
 
-    val dataWholeYear: List[Double] = dataWithSeason.map(d => Parsers.parseDouble(d.\("data"))).flatten
-    val dataTenYears: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time")).getOrElse(new DateTime()).isAfter(tenyearsago))
-      .map(d => Parsers.parseDouble(d.\("data"))).flatten
-    val dataLastYear: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time")).getOrElse(new DateTime()).isAfter(lastYear))
-      .map(d => Parsers.parseDouble(d.\("data"))).flatten
+      // create the result Jsobject
+      var trendsdata:JsObject = Json.obj("totalaverage" -> dataWholeYear.sum / dataWholeYear.length,
+        "tenyearsaverage" -> dataTenYears.sum / dataTenYears.length,
+        "lastaverage" -> dataLastYear.sum / dataLastYear.length)
 
-    // create the result Jsobject
-    var trendsdata:JsObject = Json.obj("totalaverage" -> dataWholeYear.sum / dataWholeYear.length,
-          "tenyearsaverage" -> dataTenYears.sum / dataTenYears.length,
-          "lastaverage" -> dataLastYear.sum / dataLastYear.length)
+      Ok(Json.obj("status" -> "OK", "trends" -> trendsdata))
+    } else {
+      Ok(Json.obj("status" -> "OK", "trends" -> "no data"))
+    }
 
-    Ok(Json.obj("status" -> "OK", "trends" -> trendsdata))
   }
 
   // check the date is the in the specified season
