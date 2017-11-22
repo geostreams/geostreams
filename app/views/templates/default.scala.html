@@ -1,0 +1,32 @@
+@(title: String, loggedUser: Option[User], withMainTabs: Boolean = true, tab: String = "", styles: Html = Html(""), scripts: Html = Html(""), modals: Html = Html(""))(content: Html)(implicit messages: Messages)
+
+@import views.html.tags.auth._
+@import controllers.routes
+
+@displayToggleLang = {
+
+}
+
+@navbarContent = {
+	@if(withMainTabs) {
+		<ul class="nav navbar-nav">
+			<li class="@("active".when(tab == "index"))"><a href="@routes.HomeController.index">@Messages("topbar.index")</a></li>
+
+		</ul>
+	}
+	<ul class="nav navbar-nav navbar-right">
+		@loggedUser.map { user =>
+			<li class="navbar-text text-right" style="margin: 5px 15px">
+				@Html(Messages("topbar.hello", s"""<span class="text-success">${user.fullName}</span>""", s"""<span class="text-info">${user.services.mkString(", ")}</span>"""))
+			</li>
+			@displayToggleLang
+			<li><a href="@routes.Auth.signOut">@Messages("signout")</a></li>
+		}.getOrElse {
+			@displayToggleLang
+			<li class="@("active".when(tab == "signin"))"><a href="@routes.Auth.signIn">@Messages("signin")</a></li>
+			<li class="@("active".when(tab == "signup"))"><a href="@routes.Auth.startSignUp">@Messages("signup")</a></li>
+		}
+	</ul>
+}
+
+@main(title)(content)

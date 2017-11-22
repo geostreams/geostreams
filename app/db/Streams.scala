@@ -2,12 +2,12 @@ package db
 
 import com.google.inject.ImplementedBy
 import db.postgres.PostgresStreams
-import model.StreamModel
-import play.api.libs.json.{JsObject, JsValue}
+import models.StreamModel
+import play.api.libs.json.{ JsObject, JsValue }
 
 /**
-  * Access Streams store.
-  */
+ * Access Streams store.
+ */
 @ImplementedBy(classOf[PostgresStreams])
 trait Streams {
   def createStream(stream: StreamModel): Int

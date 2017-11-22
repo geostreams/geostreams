@@ -1,12 +1,12 @@
 package controllers
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{ Action, Controller }
 
 /**
-  * Caches are kept to retrieve binned versions of the data (datatapoints) and trends.
-  */
+ * Caches are kept to retrieve binned versions of the data (datatapoints) and trends.
+ */
 @Singleton
 class CacheController @Inject() extends Controller {
 

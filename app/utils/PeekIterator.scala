@@ -1,8 +1,8 @@
-package util
+package utils
 
 /**
-  * Iterator that allows to look at the next
-  */
+ * Iterator that allows to look at the next
+ */
 class PeekIterator[T](parent: Iterator[T]) extends Iterator[T] {
   var nextElement: Option[T] = None
 

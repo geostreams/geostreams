@@ -1,0 +1,41 @@
+@(users:List[User])(implicit user: User, messages: Messages, request: RequestHeader)
+
+@import controllers.routes
+
+
+@views.html.templates.logged(title = "Manage Users") {
+
+  <div class="container">
+    <h1 class="text-primary">Manage Users</h1>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Full name</th>
+          <th>Email</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @users.map{ single_user =>
+          <tr>
+            <td>@single_user.fullName</td>
+            <td>@single_user.email</td>
+            @if(single_user.id != user.id) {
+              @if(single_user.services.contains("master")) {
+                <td><button id="@single_user.id-disable">Disable master</button></td>
+              } else {
+                <td><button id="@single_user.id-enable">Enable master</button></td>
+              }
+            } else {
+              <td></td>
+            }
+          </tr>
+          }
+      </tbody>
+    </table>
+  </div>
+
+  <script type="text/javascript" src="@routes.MyAssets.js("Users.js")"></script>
+
+}
+

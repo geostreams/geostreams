@@ -1,29 +1,31 @@
 package db.postgres
 
-import java.sql.{SQLException, Statement}
+import java.sql.{ SQLException, Statement }
 import javax.inject.Inject
 import play.api.Logger
+import play.api.libs.json.{ JsObject, JsValue, Json, __ }
+import play.api.db.Database
+import play.api.libs.json._
+import play.api.libs.json.Json._
 import scala.collection.mutable.ListBuffer
 
 import db.Sensors
-import model.SensorModel
-import play.api.libs.json.{JsObject, JsValue, Json, __}
-import play.api.db.Database
-import model.SensorModel._
-import play.api.libs.json._
-import play.api.libs.json.Json._
+import models.SensorModel
+import models.SensorModel._
 
 /**
-  * Store sensors in Postgres.
-  */
-class PostgresSensors @Inject()(db: Database) extends Sensors {
+ * Store sensors in Postgres.
+ */
+class PostgresSensors @Inject() (db: Database) extends Sensors {
 
   def createSensor(sensor: SensorModel): Int = {
     // connection will be closed at the end of the block
     db.withConnection { conn =>
-      val ps = conn.prepareStatement("INSERT INTO sensors(name, geog, created, metadata) " +
-        "VALUES(?, CAST(ST_GeomFromGeoJSON(?) AS geography), NOW(), CAST(? AS json));",
-        Statement.RETURN_GENERATED_KEYS)
+      val ps = conn.prepareStatement(
+        "INSERT INTO sensors(name, geog, created, metadata) " +
+          "VALUES(?, CAST(ST_GeomFromGeoJSON(?) AS geography), NOW(), CAST(? AS json));",
+        Statement.RETURN_GENERATED_KEYS
+      )
       ps.setString(1, sensor.name)
       ps.setString(2, Json.stringify(Json.toJson(sensor.geometry)))
       ps.setString(3, Json.stringify(sensor.properties))
@@ -57,18 +59,18 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
       st.setInt(1, id)
       st.setInt(2, id)
       val rs = st.executeQuery()
-      var sensor:Option[SensorModel] = None
-      while(rs.next()) {
+      var sensor: Option[SensorModel] = None
+      while (rs.next()) {
         val data = rs.getString(1)
         sensor = Some(Json.parse(data).as[SensorModel])
       }
-        rs.close()
-        st.close()
+      rs.close()
+      st.close()
       sensor
     }
   }
 
-  def updateSensorMetadata(id: Int , update: JsObject): JsValue = {
+  def updateSensorMetadata(id: Int, update: JsObject): JsValue = {
     // connection will be closed at the end of the block
     db.withTransaction { conn =>
       try {
@@ -151,7 +153,7 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
     }
   }
 
-  def updateSensorStats(sensor_id: Option[Int]):Unit = {
+  def updateSensorStats(sensor_id: Option[Int]): Unit = {
     db.withConnection { conn =>
       // always update the empty streams list first
       updateEmptyStats()
@@ -235,7 +237,7 @@ class PostgresSensors @Inject()(db: Database) extends Sensors {
       st.setFetchSize(50)
       Logger.debug("Sensors search statement: " + st)
       val rs = st.executeQuery()
-      var sensors:ListBuffer[SensorModel] = ListBuffer()
+      var sensors: ListBuffer[SensorModel] = ListBuffer()
       while (rs.next()) {
         val data = rs.getString(1)
         sensors += Json.parse(data).as[SensorModel]

@@ -1,21 +1,21 @@
 package db.postgres
 
-import java.sql.{SQLException, Statement}
+import java.sql.{ SQLException, Statement }
 import javax.inject.Inject
 import play.api.Logger
+import play.api.libs.json.{ JsObject, JsValue, Json, __ }
+import play.api.db.Database
 import scala.collection.mutable.ListBuffer
 
 import db.Streams
 import db.Sensors
-import model.StreamModel
-import play.api.libs.json.{JsObject, JsValue, Json, __}
-import play.api.db.Database
-import model.StreamModel._
+import models.StreamModel
+import models.StreamModel._
 
 /**
-  * Store streams in Postgres.
-  */
-class PostgresStreams @Inject()(db: Database, sensors: Sensors) extends Streams {
+ * Store streams in Postgres.
+ */
+class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams {
 
   def createStream(stream: StreamModel): Int = {
     // connection will be closed at the end of the block
@@ -54,8 +54,8 @@ class PostgresStreams @Inject()(db: Database, sensors: Sensors) extends Streams 
       st.setInt(1, id)
       val rs = st.executeQuery()
 
-      var stream:Option[StreamModel] = None
-      while(rs.next()) {
+      var stream: Option[StreamModel] = None
+      while (rs.next()) {
         val data = rs.getString(1)
         stream = Some(Json.parse(data).as[StreamModel])
       }
@@ -183,7 +183,7 @@ class PostgresStreams @Inject()(db: Database, sensors: Sensors) extends Streams 
       Logger.debug("Stream search statement: " + st)
       val rs = st.executeQuery()
 
-      var streams:ListBuffer[StreamModel] = ListBuffer()
+      var streams: ListBuffer[StreamModel] = ListBuffer()
 
       while (rs.next()) {
         val data = rs.getString(1)
@@ -194,8 +194,6 @@ class PostgresStreams @Inject()(db: Database, sensors: Sensors) extends Streams 
       streams.toList
     }
   }
-
-
 
   def deleteStream(id: Int): Unit = {
     db.withConnection { conn =>

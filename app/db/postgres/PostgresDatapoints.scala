@@ -1,25 +1,29 @@
 package db.postgres
 
-import java.sql.{SQLException, Statement}
+import java.sql.{ SQLException, Statement }
 import javax.inject.Inject
+import play.api.Logger
+import utils.Parsers
+import scala.collection.mutable.ListBuffer
 
-import util.Parsers
-import db.{Datapoints, Sensors}
-import model.DatapointModel
-import model.DatapointModel._
+import db.{ Datapoints, Sensors }
+import models.DatapointModel
+import play.api.libs.json.{ JsObject, JsValue, Json, __ }
+import play.api.db.Database
+import models.DatapointModel._
 import java.text.SimpleDateFormat
 import java.sql.Timestamp
 
 import scala.collection.mutable.ListBuffer
-import play.api.libs.json.{JsObject, JsValue, Json, __}
+import play.api.libs.json.{ JsObject, JsValue, Json, __ }
 import play.api.db.Database
 import play.api.libs.json._
 import play.api.libs.json.Json._
 
 /**
-  * Store datapoints in Postgres.
-  */
-class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datapoints {
+ * Store datapoints in Postgres.
+ */
+class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Datapoints {
   def addDatapoint(datapoint: DatapointModel): Int = {
     db.withConnection { conn =>
       val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
@@ -34,8 +38,7 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
       if (datapoint.end_time.isDefined) {
         val end = new Timestamp(formatter.parse(datapoint.end_time.get).getTime())
         ps.setTimestamp(2, new Timestamp(end.getTime))
-      }
-      else
+      } else
         ps.setDate(2, null)
 
       ps.setInt(3, datapoint.stream_id)
@@ -63,24 +66,23 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
         statement += "(?, ?, ?, CAST(? AS jsonb), CAST(ST_GeomFromGeoJSON(?) AS geography), NOW()), "
       })
       // Remove trailing comma
-      statement = statement.substring(0, statement.length()-2) + ";"
+      statement = statement.substring(0, statement.length() - 2) + ";"
       val ps = conn.prepareStatement(statement, Statement.RETURN_GENERATED_KEYS)
 
       var index = 0
       datapoints.foreach(dp => {
         // Set query parameters into proper positions in statement
         val start = new Timestamp(formatter.parse(dp.start_time).getTime())
-        ps.setTimestamp(index+1, new Timestamp(start.getTime))
+        ps.setTimestamp(index + 1, new Timestamp(start.getTime))
         if (dp.end_time.isDefined) {
           val end = new Timestamp(formatter.parse(dp.end_time.get).getTime())
-          ps.setTimestamp(index+2, new Timestamp(end.getTime))
-        }
-        else
+          ps.setTimestamp(index + 2, new Timestamp(end.getTime))
+        } else
           ps.setDate(2, null)
 
-        ps.setInt(index+3, dp.stream_id)
-        ps.setString(index+4, Json.stringify(dp.properties))
-        ps.setString(index+5, Json.stringify(Json.toJson(dp.geometry)))
+        ps.setInt(index + 3, dp.stream_id)
+        ps.setString(index + 4, Json.stringify(dp.properties))
+        ps.setString(index + 5, Json.stringify(Json.toJson(dp.geometry)))
         index += 5
       })
 
@@ -108,8 +110,8 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
       st.setInt(1, id)
       val rs = st.executeQuery()
 
-      var datapoint:Option[DatapointModel] = None
-      while(rs.next()) {
+      var datapoint: Option[DatapointModel] = None
+      while (rs.next()) {
         val data = rs.getString(1)
         datapoint = Some(Json.parse(data).as[DatapointModel])
       }
@@ -120,7 +122,7 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
   }
 
   def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String], sensor_id: Option[String],
-                       source: List[String], attributes: List[String], sortByStation: Boolean): Iterator[JsObject] = {
+    source: List[String], attributes: List[String], sortByStation: Boolean): Iterator[JsObject] = {
     db.withConnection { conn =>
       val parts = geocode match {
         case Some(x) => x.split(",")
@@ -326,14 +328,14 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
     }
   }
 
-  def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String]): Unit ={
+  def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String]): Unit = {
     db.withConnection { conn =>
       val query = "UPDATE datapoints SET data = replace(data::text, ?, ?)::json"
       val queryConditionStart = " WHERE gid in (SELECT datapoints.gid FROM datapoints, streams, sensors WHERE sensors.gid " +
         "= streams.sensor_id AND datapoints.stream_id = streams.gid"
       val queryCondition = (source, region) match {
         case (Some(s), Some(r)) => queryConditionStart + " AND json_extract_path_text(sensors.metadata,'type','id') " +
-      "= ? AND sensors.metadata ->> 'region'::text LIKE ?)"
+          "= ? AND sensors.metadata ->> 'region'::text LIKE ?)"
         case (Some(s), None) => queryConditionStart + " AND json_extract_path_text(sensors.metadata,'type','id') = ? )"
         case (None, Some(r)) => queryConditionStart + " AND sensors.metadata ->> 'region'::text LIKE ? )"
         case (None, None) => "" //no need to link sensors and streams
@@ -342,13 +344,13 @@ class PostgresDatapoints @Inject()(db: Database, sensors: Sensors) extends Datap
       val st = conn.prepareStatement(query + queryCondition)
       st.setString(1, oldParam)
       st.setString(2, newParam)
-      if(source.isDefined) {
+      if (source.isDefined) {
         st.setString(3, source.get)
-        if(region.isDefined){
+        if (region.isDefined) {
           st.setString(4, region.get)
         }
       } else {
-        if(region.isDefined){
+        if (region.isDefined) {
           st.setString(3, region.get)
         }
       }

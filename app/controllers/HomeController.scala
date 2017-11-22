@@ -1,17 +1,26 @@
 package controllers
 
+import db.Users
 import javax.inject._
 import play.api._
 import play.api.mvc._
+import play.api.routing._
 import play.api.libs.json._
 import play.api.libs.json.Json._
+import models._
+import utils.silhouette._
+import com.mohiva.play.silhouette.api.Silhouette
+import play.api.i18n.{ MessagesApi, Messages, Lang }
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits._
 
 /**
  * This controller creates an `Action` to handle HTTP requests to the
  * application's home page.
  */
 @Singleton
-class HomeController @Inject() extends Controller {
+class HomeController @Inject() (val silhouette: Silhouette[MyEnv], val messagesApi: MessagesApi, usersDB: Users)
+    extends AuthController {
 
   /**
    * Create an Action to render an HTML page.
@@ -20,11 +29,43 @@ class HomeController @Inject() extends Controller {
    * will be called when the application receives a `GET` request with
    * a path of `/`.
    */
-  def index = Action { implicit request =>
+  def index = UserAwareAction { implicit request =>
     Ok(views.html.index())
   }
 
-  def oldApi(page:String) = Action {
+  def oldApi(page: String) = UserAwareAction {
     Ok(Json.obj("status" -> "You are using old APIs, please remove 'geostreams' in URL"))
+  }
+
+  def manageUser() = SecuredAction(WithService("master")) { implicit request =>
+    val users = usersDB.listAll()
+    Ok(views.html.user.manage(users))
+  }
+
+  def changeMaster(id: String, enable: Boolean) = SecuredAction(WithService("master")) { implicit request =>
+    val user = usersDB.get(id.toInt)
+    user match {
+      case Some(u) => {
+        val oldServices = u.services
+        val newUser = if (enable) {
+          usersDB.save(u.copy(services = "master" :: oldServices))
+        } else {
+          usersDB.save(u.copy(services = oldServices.filter(_ != "master")))
+        }
+        Ok(toJson(Map("status" -> "success")))
+      }
+      case None => Ok(toJson(Map("status" -> "failed")))
+    }
+  }
+
+  /**
+   *  Javascript routing.
+   */
+  def javascriptRoutes = Action { implicit request =>
+    Ok(
+      JavaScriptReverseRouter("jsRoutes")(
+        routes.javascript.HomeController.changeMaster
+      )
+    ).as("text/javascript")
   }
 }

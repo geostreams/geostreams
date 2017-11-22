@@ -4,7 +4,7 @@ import java.sql.Statement
 import javax.inject._
 
 import db.Sensors
-import model.{GeometryModel, SensorModel}
+import models.{ GeometryModel, SensorModel }
 import play.api.data.Forms._
 import play.api.data._
 import play.api.db.Database
@@ -13,15 +13,17 @@ import play.api.libs.functional.syntax._
 import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.json.Json._
+import utils.silhouette._
+import com.mohiva.play.silhouette.api.Silhouette
 
 case class SensorData(name: String, age: Int)
 
 /**
-  * Sensors or locations are the topmost data structure in the data model. Sensors contain streams and streams contain
-  * datapoints.
-  */
-class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val messagesApi: MessagesApi)
-  extends Controller with I18nSupport {
+ * Sensors or locations are the topmost data structure in the data model. Sensors contain streams and streams contain
+ * datapoints.
+ */
+class SensorController @Inject() (val silhouette: Silhouette[MyEnv], sensors: Sensors)(implicit val messagesApi: MessagesApi)
+    extends AuthController with I18nSupport {
 
   val sensorForm = Form(
     mapping(
@@ -49,11 +51,11 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
   }
 
   /**
-    * Create sensor.
-    *
-    * @return
-    */
-  def sensorCreate = Action(BodyParsers.parse.json) { implicit request =>
+   * Create sensor.
+   *
+   * @return
+   */
+  def sensorCreate = SecuredAction(WithService("master"))(BodyParsers.parse.json) { implicit request =>
     val sensorResult = request.body.validate[SensorModel]
     sensorResult.fold(
       errors => {
@@ -67,28 +69,27 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
   }
 
   /**
-    * Retrieve sensor. Set `min_start_time` and `max_start_time` based on streams belonging to this sensor.
-    * TODO: simplify query by setting `min_start_time` and `max_start_time` when updating statistics on sensors and streams.
-    *
-    * @param id
-    * @return
-    */
+   * Retrieve sensor. Set `min_start_time` and `max_start_time` based on streams belonging to this sensor.
+   * TODO: simplify query by setting `min_start_time` and `max_start_time` when updating statistics on sensors and streams.
+   *
+   * @param id
+   * @return
+   */
   def sensorGet(id: Int) = Action {
     sensors.getSensor(id) match {
       case Some(sensor) => Ok(Json.obj("status" -> "OK", "sensor" -> sensor))
       case None => NotFound(Json.obj("message" -> "Sensor not found."))
     }
 
-
   }
 
   /**
-    * Update `properties` element of sensor.
-    *
-    * @param id
-    * @return new sensor definition
-    */
-  def sensorUpdateMetadata(id: Int) = Action(parse.json) { implicit request =>
+   * Update `properties` element of sensor.
+   *
+   * @param id
+   * @return new sensor definition
+   */
+  def sensorUpdateMetadata(id: Int) = SecuredAction(WithService("master"))(parse.json) { implicit request =>
     request.body.validate[(JsObject)].map {
       case (body) =>
         val updatedSensor = sensors.updateSensorMetadata(id, body)
@@ -99,21 +100,25 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
   }
 
   /**
-    * Get `properties` element of sensor.
-    *
-    * @param id
-    * @return sensor definition
-    */
+   * Get `properties` element of sensor.
+   *
+   * @param id
+   * @return sensor definition
+   */
   def sensorGetStatistics(id: Int) = Action {
     sensors.getSensor(id) match {
       case Some(sensor) => {
         val data = sensors.getSensorStats(sensor.id)
-        Ok(Json.obj("status" -> "OK",
+        Ok(Json.obj(
+          "status" -> "OK",
           "id" -> sensor.id,
           "name" -> sensor.name,
-          "range" -> Map[String, JsValue]("min_start_time" -> (data \ "min_start_time").getOrElse(JsNull),
-          "max_end_time" -> (data \ "max_end_time").getOrElse(JsNull)),
-          "parameters" -> (data \ "parameters").getOrElse(JsNull)))
+          "range" -> Map[String, JsValue](
+            "min_start_time" -> (data \ "min_start_time").getOrElse(JsNull),
+            "max_end_time" -> (data \ "max_end_time").getOrElse(JsNull)
+          ),
+          "parameters" -> (data \ "parameters").getOrElse(JsNull)
+        ))
 
       }
       case None => NotFound(Json.obj("message" -> "Sensor not found."))
@@ -122,11 +127,11 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
   }
 
   /**
-    * Get all streams of a sensor.
-    *
-    * @param id
-    * @return list of streams<id, name>
-    */
+   * Get all streams of a sensor.
+   *
+   * @param id
+   * @return list of streams<id, name>
+   */
   def sensorGetStreams(id: Int) = Action {
     sensors.getSensor(id) match {
       case Some(sensor) => {
@@ -138,12 +143,12 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
   }
 
   /**
-    * Update "min_start_time", "max_end_time", "params" element of a senaor.
-    *
-    * @param id
-    * @return
-    */
-  def sensorUpdateStatistics(id: Int) = Action { implicit request =>
+   * Update "min_start_time", "max_end_time", "params" element of a senaor.
+   *
+   * @param id
+   * @return
+   */
+  def sensorUpdateStatistics(id: Int) = SecuredAction(WithService("master")) { implicit request =>
     sensors.getSensor(id) match {
       case Some(sensor) => {
         sensors.updateSensorStats(Some(sensor.id))
@@ -155,31 +160,31 @@ class SensorController @Inject()(db: Database, sensors: Sensors)(implicit val me
   }
 
   /**
-    * Update "min_start_time", "max_end_time", "params" element of all senaors.
-    *
-    */
-  def sensorUpdateStatisticsStream() = Action { implicit request =>
+   * Update "min_start_time", "max_end_time", "params" element of all senaors.
+   *
+   */
+  def sensorUpdateStatisticsStream() = SecuredAction(WithService("master")) { implicit request =>
     sensors.updateSensorStats(None)
     Ok(Json.obj("status" -> "update"))
   }
 
   /**
-    * Search sensors.
-    *
-    * @param geocode, sensor_name
-    * @return sensor
-    */
+   * Search sensors.
+   *
+   * @param geocode, sensor_name
+   * @return sensor
+   */
   def sensorsSearch(geocode: Option[String], sensor_name: Option[String]) = Action {
 
-    Ok(Json.obj("sensors" ->sensors.searchSensors(geocode, sensor_name)))
+    Ok(Json.obj("sensors" -> sensors.searchSensors(geocode, sensor_name)))
   }
 
   /**
-    * Delete sensor.
-    *
-    * @param id
-    */
-  def sensorDelete(id: Int) = Action {
+   * Delete sensor.
+   *
+   * @param id
+   */
+  def sensorDelete(id: Int) = SecuredAction(WithService("master")) {
     sensors.getSensor(id) match {
       case Some(sensor) => {
         sensors.deleteSensor(sensor.id)

@@ -5,7 +5,7 @@ import javax.inject.Inject
 import play.api.mvc._
 import play.api.db._
 
-class DBController @Inject()(db: Database) extends Controller {
+class DBController @Inject() (db: Database) extends Controller {
 
   def index = Action {
     var outString = "Stats: \n"

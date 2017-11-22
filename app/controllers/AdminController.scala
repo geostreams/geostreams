@@ -1,12 +1,12 @@
 package controllers
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{ Action, Controller }
 
 /**
-  * Admin level endpoints.
-  */
+ * Admin level endpoints.
+ */
 @Singleton
 class AdminController @Inject() extends Controller {
 

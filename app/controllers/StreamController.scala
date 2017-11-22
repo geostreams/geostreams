@@ -1,12 +1,11 @@
 package controllers
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 
-import db.{Sensors, Streams}
-import model.{GeometryModel, SensorModel, StreamModel}
-
+import db.{ Sensors, Streams }
+import models.{ GeometryModel, SensorModel, StreamModel }
 import play.api.mvc._
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{ Action, Controller }
 import play.api.mvc.Results._
 import play.api.data._
 import play.api.db.Database
@@ -14,21 +13,22 @@ import play.api.i18n._
 import play.api.libs.json._
 import play.api.libs.json.Json._
 import play.api.libs.functional.syntax._
-
+import utils.silhouette._
+import com.mohiva.play.silhouette.api.Silhouette
 
 /**
-  * Streams are a way of grouping datapoints together. A stream has to belong to a `Sensor` and and `Datapoint` has to
-  * belong to a `Stream`.
-  */
+ * Streams are a way of grouping datapoints together. A stream has to belong to a `Sensor` and and `Datapoint` has to
+ * belong to a `Stream`.
+ */
 @Singleton
-class StreamController @Inject()(db: Database, sensors: Sensors, streams: Streams) extends Controller {
+class StreamController @Inject() (val silhouette: Silhouette[MyEnv], db: Database, sensors: Sensors, streams: Streams)(implicit val messagesApi: MessagesApi) extends AuthController with I18nSupport {
 
   /**
-    * Create stream.
-    *
-    * @return id
-    */
-  def streamCreate = Action(BodyParsers.parse.json) { implicit request =>
+   * Create stream.
+   *
+   * @return id
+   */
+  def streamCreate = SecuredAction(WithService("master"))(BodyParsers.parse.json) { implicit request =>
     val streamResult = request.body.validate[StreamModel]
     streamResult.fold(
       errors => {
@@ -42,64 +42,65 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
   }
 
   /**
-    * Update "min_start_time", "max_end_time", "params" element of sensor and stream.
-    * Duplicate with Sensor.updateStatisticsStreamSensor
-    *
-    */
+   * Update "min_start_time", "max_end_time", "params" element of sensor and stream.
+   * Duplicate with Sensor.updateStatisticsStreamSensor
+   *
+   */
   def streamUpdateStatisticsSensor() = Action {
     sensors.updateSensorStats(None)
     Ok(Json.obj("status" -> "update"))
   }
 
   /**
-    * Retrieve stream. Set `min_start_time` and `max_start_time` based on streams belonging to this stream.
-    * TODO: simplify query by setting `min_start_time` and `max_start_time` when updating statistics on sensors and streams.
-    *
-    * @param id
-    * @return
-    */
+   * Retrieve stream. Set `min_start_time` and `max_start_time` based on streams belonging to this stream.
+   * TODO: simplify query by setting `min_start_time` and `max_start_time` when updating statistics on sensors and streams.
+   *
+   * @param id
+   * @return
+   */
   def streamGet(id: Int) = Action {
     streams.getStream(id) match {
-      case Some(stream) =>  Ok(Json.obj("status" -> "ok", "stream" -> stream))
+      case Some(stream) => Ok(Json.obj("status" -> "ok", "stream" -> stream))
       case None => NotFound(Json.obj("message" -> "Stream not found."))
     }
 
   }
 
   /**
-    * Update `properties` element of stream.
-    *
-    * @param id
-    * @return new stream
-    */
-  def streamPatchMetadata(id: Int) = Action(parse.json) { implicit request => {
-    streams.getStream(id) match {
-      case Some(stream) => {
-        request.body.validate[(JsValue)].map {
-          case (data) => {
-            val stream = streams.patchStreamMetadata(id, Json.stringify(data))
-            Ok(Json.obj("status" -> "update", "stream" -> stream))
-            //TODO: return null stream id is not found
-            // match {
-            //              case Some(d) => Ok(Json.obj("status" -> d))
-            //              case None => BadRequest(Json.obj("status" ->"Failed to update stream"))
-            //            }
+   * Update `properties` element of stream.
+   *
+   * @param id
+   * @return new stream
+   */
+  def streamPatchMetadata(id: Int) = Action(parse.json) { implicit request =>
+    {
+      streams.getStream(id) match {
+        case Some(stream) => {
+          request.body.validate[(JsValue)].map {
+            case (data) => {
+              val stream = streams.patchStreamMetadata(id, Json.stringify(data))
+              Ok(Json.obj("status" -> "update", "stream" -> stream))
+              //TODO: return null stream id is not found
+              // match {
+              //              case Some(d) => Ok(Json.obj("status" -> d))
+              //              case None => BadRequest(Json.obj("status" ->"Failed to update stream"))
+              //            }
+            }
+          }.recoverTotal {
+            e => BadRequest("Detected error:" + JsError.toFlatJson(e))
           }
-        }.recoverTotal {
-          e => BadRequest("Detected error:" + JsError.toFlatJson(e))
         }
+        case None => NotFound(Json.obj("message" -> "Stream not found."))
       }
-      case None => NotFound(Json.obj("message" -> "Stream not found."))
     }
-  }
 
   }
 
   /**
-    * Update "min_start_time", "max_end_time", "params" element of stream.
-    *
-    */
-  def streamUpdateStatistics(id: Int) = Action {
+   * Update "min_start_time", "max_end_time", "params" element of stream.
+   *
+   */
+  def streamUpdateStatistics(id: Int) = SecuredAction(WithService("master")) {
     streams.getStream(id) match {
       case Some(stream) => {
         streams.updateStreamStats(Some(stream.id))
@@ -111,22 +112,22 @@ class StreamController @Inject()(db: Database, sensors: Sensors, streams: Stream
   }
 
   /**
-    * Search stream.
-    *
-    * @param geocode, stream_name
-    * @return stream
-    */
+   * Search stream.
+   *
+   * @param geocode, stream_name
+   * @return stream
+   */
   def streamsSearch(geocode: Option[String], stream_name: Option[String]) = Action {
     val searchStreams = streams.searchStreams(geocode, stream_name)
     Ok(Json.obj("status" -> "ok", "streams" -> searchStreams))
   }
 
   /**
-    * Delete stream.
-    *
-    * @param id
-    */
-  def streamDelete(id: Int) = Action {
+   * Delete stream.
+   *
+   * @param id
+   */
+  def streamDelete(id: Int) = SecuredAction(WithService("master")) {
     streams.getStream(id) match {
       case Some(stream) => {
         streams.deleteStream(stream.id)

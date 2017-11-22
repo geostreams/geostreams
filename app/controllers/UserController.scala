@@ -13,7 +13,7 @@ case class UserData(name: String, age: Int)
 /**
  * User form controller for Play Scala
  */
-class UserController @Inject()(implicit val messagesApi: MessagesApi) extends Controller with I18nSupport {
+class UserController @Inject() (implicit val messagesApi: MessagesApi) extends Controller with I18nSupport {
 
   val userForm = Form(
     mapping(
@@ -33,8 +33,8 @@ class UserController @Inject()(implicit val messagesApi: MessagesApi) extends Co
         BadRequest(views.html.user.form(formWithErrors))
       },
       userData => {
-        /* binding success, you get the actual value. */       
-        /* flashing uses a short lived cookie */ 
+        /* binding success, you get the actual value. */
+        /* flashing uses a short lived cookie */
         Redirect(routes.UserController.userGet()).flashing("success" -> ("Successful " + userData.toString))
       }
     )
