@@ -30,6 +30,8 @@ libraryDependencies += "net.codingwell" %% "scala-guice" % "4.0.1"
 libraryDependencies += "com.iheart" %% "ficus" % "1.2.6"
 libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
 
+resolvers += Resolver.jcenterRepo
+
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "edu.illinois.ncsa.controllers._"
 
