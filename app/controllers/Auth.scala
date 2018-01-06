@@ -148,20 +148,27 @@ class Auth @Inject() (
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // SIGN IN
-
-  val signInForm = Form(tuple(
+  val signInForm = Form(mapping(
     "identifier" -> email,
     "password" -> nonEmptyText,
-    "rememberMe" -> boolean
-  ))
+    "rememberMe" -> boolean,
+    "fromURL" -> text
+  )(SignInData.apply)(SignInData.unapply))
 
   /**
    * Starts the sign in mechanism. It shows the login form.
    */
-  def signIn = UserAwareAction { implicit request =>
+  def signIn(fromURL: Option[String]) = UserAwareAction { implicit request =>
     request.identity match {
-      case Some(user) => Redirect(routes.HomeController.index)
-      case None => Ok(viewsAuth.signIn(signInForm))
+      case Some(user) => {
+        fromURL match {
+          case Some(url) => Redirect(url)
+          case None => Redirect(routes.HomeController.index)
+        }
+      }
+      case None => {
+        Ok(viewsAuth.signIn(signInForm.fill(SignInData("", "", false, fromURL.getOrElse("")))))
+      }
     }
   }
 
@@ -172,10 +179,15 @@ class Auth @Inject() (
     signInForm.bindFromRequest.fold(
       formWithErrors => Future.successful(BadRequest(viewsAuth.signIn(formWithErrors))),
       formData => {
-        val (identifier, password, rememberMe) = formData
-
-        val entryUri = request.session.get("ENTRY_URI")
-        val targetUri: String = entryUri.getOrElse(routes.HomeController.index.toString)
+        val identifier = formData.identifier
+        val password = formData.password
+        //        TODO: use this entryUri
+        //        val entryUri = request.session.get("ENTRY_URI")
+        //        val targetUri: String = entryUri.getOrElse(routes.HomeController.index.toString)
+        val targetUri: String = formData.fromURL match {
+          case "" => routes.HomeController.index.toString
+          case _ => formData.fromURL
+        }
 
         usersDB.findByEmail(identifier) match {
           case Some(user) => {
@@ -183,7 +195,7 @@ class Auth @Inject() (
 
             if ((new BCryptPasswordHasher()).matches(passwordInfo, password)) {
               for {
-                authenticator <- env.authenticatorService.create(identifier).map(authenticatorWithRememberMe(_, rememberMe))
+                authenticator <- env.authenticatorService.create(identifier).map(authenticatorWithRememberMe(_, formData.rememberMe))
                 cookie <- env.authenticatorService.init(authenticator)
                 result <- env.authenticatorService.embed(cookie, Redirect(targetUri).withSession(request.session - "ENTRY_URI"))
               } yield {
@@ -191,11 +203,10 @@ class Auth @Inject() (
                 result
               }
             } else {
-              Future.successful(Redirect(routes.Auth.signIn).flashing("error" -> Messages("auth.credentials.incorrect")))
+              Future.successful(Redirect(routes.Auth.signIn(fromURL = Some(formData.fromURL))).flashing("error" -> Messages("auth.credentials.incorrect")))
             }
           }
-          // TODO: need to fix
-          case None => Future.successful(Redirect(routes.Auth.signIn).flashing("error" -> "Couldn't find user"))
+          case None => Future.successful(Redirect(routes.Auth.signIn(fromURL = Some(formData.fromURL))).flashing("error" -> "Couldn't find user"))
         }
       }
     )

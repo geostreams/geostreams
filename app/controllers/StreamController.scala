@@ -46,7 +46,7 @@ class StreamController @Inject() (val silhouette: Silhouette[MyEnv], db: Databas
    * Duplicate with Sensor.updateStatisticsStreamSensor
    *
    */
-  def streamUpdateStatisticsSensor() = Action {
+  def streamUpdateStatisticsSensor() = SecuredAction(WithService("master")) {
     sensors.updateSensorStats(None)
     Ok(Json.obj("status" -> "update"))
   }
@@ -58,7 +58,7 @@ class StreamController @Inject() (val silhouette: Silhouette[MyEnv], db: Databas
    * @param id
    * @return
    */
-  def streamGet(id: Int) = Action {
+  def streamGet(id: Int) = SecuredAction(WithService("master")) {
     streams.getStream(id) match {
       case Some(stream) => Ok(Json.obj("status" -> "ok", "stream" -> stream))
       case None => NotFound(Json.obj("message" -> "Stream not found."))

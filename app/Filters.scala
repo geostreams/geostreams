@@ -17,11 +17,12 @@ import play.filters.cors.CORSFilter
 class Filters @Inject() (
   csrfFilter: CSRFFilter,
   allowedHostsFilter: AllowedHostsFilter,
-  securityHeadersFilter: SecurityHeadersFilter,
+  //  securityHeadersFilter: SecurityHeadersFilter,
   corsFilter: CORSFilter
 ) extends DefaultHttpFilters(
   csrfFilter,
   allowedHostsFilter,
-  securityHeadersFilter,
+  // disable securityHeadersFilter for current, maybe move back
+  // securityHeadersFilter,
   corsFilter
 )

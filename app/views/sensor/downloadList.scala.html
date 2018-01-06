@@ -1,0 +1,39 @@
+@import play.api.libs.json.{ JsValue, Json }
+
+@(events:List[JsValue])(implicit user: User, messages: Messages, request: RequestHeader)
+
+@views.html.templates.logged(title = "Download Events") {
+
+  <div class="container">
+    <h1 class="text-primary">Download Events</h1>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>User Email</th>
+          <th>Download Date</th>
+          <th>Sources</th>
+          <th>Attributes</th>
+          <th>Geocode</th>
+          <th>Since</th>
+          <th>Until</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+      @events.map{ single_events =>
+        <tr>
+          <td>@(single_events.\("user").as[String])</td>
+          <td>@(single_events.\("date").as[String])</td>
+          <td>@(single_events.\("sources").as[String])</td>
+          <td>@(single_events.\("attributes").as[String])</td>
+          <td style="word-wrap: break-word;min-width: 160px;max-width: 160px;">@(single_events.\("geocode").as[String])</td>
+          <td>@(single_events.\("since").as[String])</td>
+          <td>@(single_events.\("until").as[String])</td>
+          <td>@(single_events.\("purpose").as[String])</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+  >

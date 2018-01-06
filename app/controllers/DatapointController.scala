@@ -1,14 +1,17 @@
 package controllers
 
 import javax.inject.{ Inject, Singleton }
-import utils.{ Parsers, PeekIterator }
+
+import akka.util.ByteString
+import utils.{ Parsers, JsonConvert }
 import utils.silhouette._
 import com.mohiva.play.silhouette.api.Silhouette
-
+import com.mohiva.play.silhouette.api.{ Silhouette, LoginInfo, AuthenticatedEvent }
 import play.api.mvc.{ Action, Controller }
-import play.api.Logger
-import db.Datapoints
+import play.api.{ Configuration, Logger }
+import db.{ Datapoints, Users, Events }
 import models.DatapointModel
+import models.User
 import play.api.data._
 import play.api.db.Database
 import play.api.i18n._
@@ -16,6 +19,7 @@ import play.api.libs.functional.syntax._
 import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.json.Json._
+
 import scala.collection.mutable.ListBuffer
 import org.joda.time.{ DateTime, IllegalInstantException }
 import org.joda.time.format.{ DateTimeFormat, ISODateTimeFormat }
@@ -23,12 +27,20 @@ import play.filters.gzip.Gzip
 import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.json.Json._
+import akka.stream._
+import akka.stream.scaladsl._
+import com.sun.xml.internal.ws.api.message.Header
+import play.api.libs.iteratee.{ Enumeratee, Enumerator }
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import views.html.{ auth => viewsAuth }
 
 /**
  * Datapoints contain the actual values together with a location and a time interval.
  */
 @Singleton
-class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoints: Datapoints)(implicit val messagesApi: MessagesApi) extends AuthController with I18nSupport {
+class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoints: Datapoints, userDB: Users,
+    eventsDB: Events, conf: Configuration)(implicit val messagesApi: MessagesApi) extends AuthController with I18nSupport {
   /**
    * add datapoint.
    *
@@ -93,8 +105,52 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
 
   def datapointSearch(operator: String, since: Option[String], until: Option[String], geocode: Option[String],
     stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
-    format: String, semi: Option[String], onlyCount: Boolean) = Action { implicit request =>
-    NotImplemented
+    format: String, semi: Option[String], onlyCount: Boolean, purpose: Option[String]) = SecuredAction(WithService("serviceDownload")) { implicit request =>
+    //TODO: implement operator
+    implicit val user = request.identity
+
+    val raw = datapoints.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, operator != "")
+
+    val filtered = semi match {
+      case Some(season) => raw.filter(p => checkSeason(season, p.\("start_time").as[String]))
+      case None => raw
+    }
+
+    if (onlyCount) {
+      Ok(Json.obj("status" -> "OK", "datapointsLength" -> filtered.length))
+    } else {
+
+      if (purpose.isDefined) {
+        eventsDB.save(request.identity.asInstanceOf[User].id, request.queryString)
+      }
+      if (format == "csv") {
+        val toByteArray: Enumeratee[String, Array[Byte]] = Enumeratee.map[String] { s => s.getBytes }
+        Ok.chunked(JsonConvert.jsonToCSV(filtered) &> toByteArray &> Gzip.gzip())
+          .withHeaders(
+            ("Content-Disposition", "attachment; filename=datapoints.csv"),
+            ("Content-Encoding", "gzip")
+          )
+          .as(withCharset("text/csv"))
+      } else {
+        Ok(JsArray(filtered)).withHeaders("Content-Disposition" -> "attachment; filename=download.json")
+      }
+    }
+  }
+
+  def datapointDownload(since: Option[String], until: Option[String], geocode: Option[String],
+    sources: List[String], attributes: List[String], format: String) = UserAwareAction { implicit request =>
+
+    request.identity match {
+      case Some(user) => {
+        Ok(views.html.sensor.download(since, until, geocode, sources, attributes, format))
+      }
+      case None => {
+        val queryString: String =
+          routes.DatapointController.datapointDownload(since, until, geocode, sources, attributes, format).toString
+
+        Redirect(routes.Auth.signIn(Some(queryString)))
+      }
+    }
   }
 
   def datapointsBin(time: String, depth: Double, keepRaw: Boolean, since: Option[String], until: Option[String],

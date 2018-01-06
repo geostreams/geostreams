@@ -15,7 +15,7 @@
 			@b3.hidden(signUpForm("services"), 'placeholder -> List("serviceDownload"))
 			@b3.submit('class -> "btn btn-primary btn-block"){ @Messages("signup") }
 			<div class="post-form-opts">
-				<p>@Messages("signup.signin.question") <a href="@routes.Auth.signIn">@Messages("signup.signin")</a></p>
+				<p>@Messages("signup.signin.question") <a href="@routes.Auth.signIn()">@Messages("signup.signin")</a></p>
 			</div>
 		</fieldset>
 	}

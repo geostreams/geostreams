@@ -1,7 +1,8 @@
 package controllers
 
-import db.Users
+import db.{ Users, Events }
 import javax.inject._
+
 import play.api._
 import play.api.mvc._
 import play.api.routing._
@@ -10,7 +11,8 @@ import play.api.libs.json.Json._
 import models._
 import utils.silhouette._
 import com.mohiva.play.silhouette.api.Silhouette
-import play.api.i18n.{ MessagesApi, Messages, Lang }
+import play.api.i18n.{ Lang, Messages, MessagesApi }
+
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits._
 
@@ -19,9 +21,8 @@ import scala.concurrent.ExecutionContext.Implicits._
  * application's home page.
  */
 @Singleton
-class HomeController @Inject() (val silhouette: Silhouette[MyEnv], val messagesApi: MessagesApi, usersDB: Users)
-    extends AuthController {
-
+class HomeController @Inject() (val silhouette: Silhouette[MyEnv], val messagesApi: MessagesApi,
+    val usersDB: Users, val eventsDB: Events) extends AuthController {
   /**
    * Create an Action to render an HTML page.
    *
@@ -29,7 +30,9 @@ class HomeController @Inject() (val silhouette: Silhouette[MyEnv], val messagesA
    * will be called when the application receives a `GET` request with
    * a path of `/`.
    */
+
   def index = UserAwareAction { implicit request =>
+
     Ok(views.html.index())
   }
 
@@ -58,13 +61,19 @@ class HomeController @Inject() (val silhouette: Silhouette[MyEnv], val messagesA
     }
   }
 
+  def listEvents() = SecuredAction(WithService("master")) { implicit request =>
+    val events = eventsDB.listAll()
+    Ok(views.html.sensor.downloadList(events))
+  }
+
   /**
    *  Javascript routing.
    */
   def javascriptRoutes = Action { implicit request =>
     Ok(
       JavaScriptReverseRouter("jsRoutes")(
-        routes.javascript.HomeController.changeMaster
+        routes.javascript.HomeController.changeMaster,
+        controllers.routes.javascript.DatapointController.datapointSearch
       )
     ).as("text/javascript")
   }
