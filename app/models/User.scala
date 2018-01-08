@@ -47,3 +47,5 @@ object User {
   val services = Seq("serviceDownload", "master")
 
 }
+
+case class SignInData(identifier: String, password: String, rememberMe: Boolean, fromURL: String)

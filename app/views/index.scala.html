@@ -17,7 +17,7 @@
   @loggedUser.map { user =>
     @Html(Messages("index.intro.logged", user.fullName, routes.HomeController.index, routes.Auth.signOut))
   }.getOrElse {
-    @Html(Messages("index.intro.notlogged", routes.Auth.signIn, routes.Auth.startSignUp, routes.Auth.forgotPassword))
+    @Html(Messages("index.intro.notlogged", routes.Auth.signIn(), routes.Auth.startSignUp, routes.Auth.forgotPassword))
   }
   </p>
 

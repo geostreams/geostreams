@@ -23,8 +23,8 @@
 			<li><a href="@routes.Auth.signOut">@Messages("signout")</a></li>
 		}.getOrElse {
 			@displayToggleLang
-			<li class="@("active".when(tab == "signin"))"><a href="@routes.Auth.signIn">@Messages("signin")</a></li>
-			<li class="@("active".when(tab == "signup"))"><a href="@routes.Auth.startSignUp">@Messages("signup")</a></li>
+			<li class="@("active".when(tab == "signin"))"><a href="@routes.Auth.signIn()">@Messages("signin")</a></li>
+			<li class="@("active".when(tab == "signup"))"><a href="@routes.Auth.startSignUp()">@Messages("signup")</a></li>
 		}
 	</ul>
 }

@@ -1,0 +1,43 @@
+@(since: Option[String], until: Option[String], geocode: Option[String], sources: List[String],
+        attributes: List[String], queryFormat: String)(implicit loggedUser: Option[User], messages: Messages)
+
+@views.html.templates.default(title = "Download", loggedUser) {
+
+    <div>
+        <div id="purposeform" class="form-group">
+            <label for="purpose" class="form-control-label">Purpose</label>
+            <textarea class="form-control" id="purpose" rows="3"></textarea>
+        </div>
+            <button type="button" class="btn btn-primary">Download</button>
+            <p id="errormessage" class="text-danger" style="display: none">Please add your purpose (>5 letters).</p>
+    </div>
+
+    <script type="text/javascript">
+            $('button').on('click', function() {
+                var purposeText = $('textarea').val();
+                if(purposeText.length > 5) {
+                    $("#errormessage").hide();
+                    var sinceString = @since.isDefined ? "@since": null;
+                    var untilString = @until.isDefined ? "@until": null;
+                    var geoString = @geocode.isDefined ? "@geocode": null;
+                    var sourcesString = [];
+                    @sources.map{ s =>
+                    sourcesString.push("@s");
+                    }
+                    var attributesString = [];
+                    @attributes.map{ a =>
+                    attributesString.push("@a");
+                    }
+                    var request = jsRoutes.controllers.DatapointController.datapointSearch("", sinceString, untilString, geoString, null, null, sourcesString, attributesString, "@queryFormat", null, false, purposeText );
+                    window.location = request.url;
+                } else {
+                    $("#errormessage").show();
+                }
+
+
+            });
+
+    </script>
+}
+
+

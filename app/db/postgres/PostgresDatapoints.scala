@@ -122,20 +122,19 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
   }
 
   def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String], sensor_id: Option[String],
-    source: List[String], attributes: List[String], sortByStation: Boolean): Iterator[JsObject] = {
+    source: List[String], attributes: List[String], sortByStation: Boolean): List[JsObject] = {
     db.withConnection { conn =>
       val parts = geocode match {
         case Some(x) => x.split(",")
         case None => Array[String]()
       }
       var query = "SELECT to_json(t) As datapoint FROM " +
-        "(SELECT datapoints.gid As id, to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS " +
-        "created, to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, " +
+        "(SELECT datapoints.gid As id, to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') " +
+        "AS created, to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, " +
         "to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, data As properties, " +
-        "'Feature' As type, ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, stream_id::int, sensor_id::int, " +
+        "'Feature' As type, ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, stream_id::text, sensor_id::text, " +
         "sensors.name as sensor_name FROM sensors, streams, datapoints" +
         " WHERE sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid"
-
       if (since.isDefined) query += " AND datapoints.start_time >= ?"
       if (until.isDefined) query += " AND datapoints.end_time <= ?"
       if (parts.length == 3) {
@@ -176,13 +175,11 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
       if (stream_id.isDefined) query += " AND stream_id = ?"
       //sensor
       if (sensor_id.isDefined) query += " AND sensor_id = ?"
-
       query += " order by "
       if (sortByStation) {
         query += "sensor_name, "
       }
       query += "start_time asc) As t;"
-
       // Populate values ------
       val st = conn.prepareStatement(query)
       var i = 0
@@ -237,42 +234,12 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
       }
       st.setFetchSize(50)
       val rs = st.executeQuery()
-
-      new Iterator[JsObject] {
-        var nextObject: Option[JsObject] = None
-
-        def hasNext = {
-          if (nextObject.isDefined) {
-            true
-          } else if (rs.isClosed) {
-            false
-          } else if (!rs.next) {
-            rs.close()
-            st.close()
-            false
-          } else {
-            val filterAttrs = attributes.filter(attr => {
-              attr.indexOf(":") == -1
-            })
-            if (filterAttrs.isEmpty) {
-              nextObject = Some(Json.parse(rs.getString(1)).as[JsObject])
-            } else {
-              nextObject = Some(filterProperties(Json.parse(rs.getString(1)).as[JsObject], filterAttrs))
-            }
-            true
-          }
-        }
-
-        def next() = {
-          if (hasNext) {
-            val x = nextObject.get
-            nextObject = None
-            x
-          } else {
-            null
-          }
-        }
+      val array = ListBuffer.empty[JsObject]
+      while (rs.next()) {
+        val datapoint = Json.parse(rs.getString(1)).as[JsObject]
+        array += datapoint
       }
+      array.toList
     }
   }
 
