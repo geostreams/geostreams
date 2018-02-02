@@ -1,88 +1,107 @@
 package controllers
 
+import db.Sensors
+import models.User
 import org.scalatestplus.play._
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
-import play.api.test.Helpers._
+import play.api.inject.bind
+import play.api.i18n.MessagesApi
 import play.api.test._
-
+import play.api.test.Helpers._
+import utils.silhouette.MyEnv
+import com.mohiva.play.silhouette.api.{ Env, Environment, EventBus, Silhouette, SilhouetteProvider }
+import com.mohiva.play.silhouette.api.actions.{ SecuredAction, UnsecuredAction, UserAwareAction }
+import play.api.libs.concurrent.Execution.Implicits._
+import com.mohiva.play.silhouette.test._
 import scala.io.Source
+import play.api.libs.json.Json
+import akka.stream.Materializer
 
 /**
-  * Test sensor controller.
-  */
+ * Test sensor controller.
+ */
 class SensorControllerSpec extends PlaySpec with GuiceOneAppPerSuite {
-
-  // configure application
-  override def fakeApplication() = new GuiceApplicationBuilder().configure(Map("db.default.logSql" -> "false")).build()
-
-  // load testing sensor
-  val newSensor = Json.parse(Source.fromURL(getClass.getResource("/sensor.json")).getLines.mkString)
-
   "SensorController" should {
+    val identity = User(Some(12), "foo@bar.com", true, "bazqux", "foo", "bar", "NCSA", List("master"))
+    implicit val env = FakeEnvironment[MyEnv](Seq(identity.loginInfo -> identity))
+    val securedAction = app.injector.instanceOf[SecuredAction]
+    val unsecuredAction = app.injector.instanceOf[UnsecuredAction]
+    val userAwareAction = app.injector.instanceOf[UserAwareAction]
+
+    val silhouette: Silhouette[MyEnv] = new SilhouetteProvider(env, securedAction, unsecuredAction, userAwareAction)
+    implicit val messagesApi = app.injector.instanceOf[MessagesApi]
+    val sensorDB = app.injector.instanceOf[Sensors]
+    val controller = new SensorController(silhouette, sensorDB)(messagesApi)
+    var sensorId: Int = 0
+    val newSensor = Json.parse(Source.fromURL(getClass.getResource("/sensor.json")).getLines.mkString)
+
     "create a new sensor" in {
 
-      val request = FakeRequest(POST, "/api/sensors").withHeaders("Host" -> "localhost").withJsonBody(newSensor)
-      val createSensor = route(app, request).get
+      //      TODO: use GuiceApplicationBuilder
+      //      val fakeApp = new GuiceApplicationBuilder()
+      //        .overrides(bind[Environment[MyEnv]].toInstance(env))
+      //        .configure(Helpers.inMemoryDatabase())
+      //        .configure(Map("db.default.logSql" -> "false"))
+      //        .build()
+      //
+      //      val Some(createSensor) = route(app, FakeRequest(POST, "/api/sensors")
+      //        .withHeaders(CONTENT_TYPE -> JSON)
+      //        .withAuthenticator[MyEnv](identity.loginInfo)
+      //        .withBody(newSensor))
+      val createSensor = controller.sensorCreate.apply(FakeRequest()
+        .withHeaders(CONTENT_TYPE -> JSON)
+        .withAuthenticator[MyEnv](identity.loginInfo)
+        .withBody(newSensor))
+      status(createSensor) mustEqual OK
 
-      status(createSensor) mustBe OK
       contentType(createSensor) mustBe Some("application/json")
       val createSensorRes = contentAsJson(createSensor)
       (createSensorRes \ "status").as[String] mustEqual "OK"
 
       // retrieve sensor
-      val sensorId = (createSensorRes \ "id").as[Int]
-      val getSensorReq = FakeRequest(GET, "/api/sensors/" + sensorId).withHeaders("Host" -> "localhost")
-      val getSensorRes = route(app, getSensorReq).get
+      sensorId = (createSensorRes \ "id").as[Int]
+      val getSensorReq = controller.sensorGet(sensorId).apply(FakeRequest())
 
-      status(getSensorRes) mustBe OK
-      contentType(getSensorRes) mustBe Some("application/json")
-      val sensor = contentAsJson(getSensorRes)
+      status(getSensorReq) mustBe OK
+      contentType(getSensorReq) mustBe Some("application/json")
+      val sensor = contentAsJson(getSensorReq)
       (sensor \ "sensor" \ "name").as[String] mustEqual "Sensor #1"
+    }
+
+    "update properties sub-document" in {
+
+      // update properties
+      val properties = Json.parse("""{"foo":"bar"}""")
+
+      val updateSensorReq = controller.sensorUpdateMetadata(sensorId).apply(FakeRequest()
+        .withAuthenticator[MyEnv](identity.loginInfo)
+        .withBody(properties))
+
+      status(updateSensorReq) mustBe OK
+      contentType(updateSensorReq) mustBe Some("application/json")
+      val updatedBody = contentAsJson(updateSensorReq)
+      (updatedBody \ "sensor" \ "properties" \ "foo").as[String] mustEqual "bar"
     }
 
     "delete a newly created sensor" in {
 
-      val request = FakeRequest(POST, "/api/sensors").withHeaders("Host" -> "localhost").withJsonBody(newSensor)
-      val createSensor = route(app, request).get
-
-      status(createSensor) mustBe OK
-      contentType(createSensor) mustBe Some("application/json")
-      val createSensorRes = contentAsJson(createSensor)
-      (createSensorRes \ "status").as[String] mustEqual "OK"
-
       // delete sensor
-      val sensorId = (createSensorRes \ "id").as[Int]
-      val delSensorReq = FakeRequest(DELETE, "/api/sensors/" + sensorId).withHeaders("Host" -> "localhost")
-      val delSensorRes = route(app, delSensorReq).get
+      val delSensorRequest = controller.sensorDelete(sensorId).apply(FakeRequest()
+        .withAuthenticator[MyEnv](identity.loginInfo))
 
-      status(delSensorRes) mustBe OK
-      contentType(delSensorRes) mustBe Some("application/json")
-      val delBody = contentAsJson(delSensorRes)
+      status(delSensorRequest) mustBe OK
+      contentType(delSensorRequest) mustBe Some("application/json")
+      val delBody = contentAsJson(delSensorRequest)
       (delBody \ "status").as[String] mustEqual "OK"
-    }
 
-    "update properties sub-document" in {
-      val request = FakeRequest(POST, "/api/sensors").withHeaders("Host" -> "localhost").withJsonBody(newSensor)
-      val createSensor = route(app, request).get
+      // Try to get the deleted sensor and verify it doesn't exist
+      val getSensorRequest = controller.sensorGet(sensorId).apply(FakeRequest()
+        .withAuthenticator[MyEnv](identity.loginInfo))
 
-      status(createSensor) mustBe OK
-      contentType(createSensor) mustBe Some("application/json")
-      val createSensorRes = contentAsJson(createSensor)
-      (createSensorRes \ "status").as[String] mustEqual "OK"
-
-      // update properties
-      val properties = Json.parse("""{"foo":"bar"}""")
-      val sensorId = (createSensorRes \ "id").as[Int]
-      val updateSensorReq = FakeRequest(PUT, "/api/sensors/" + sensorId).withHeaders("Host" -> "localhost")
-        .withJsonBody(properties)
-      val updateSensorRes = route(app, updateSensorReq).get
-
-      status(updateSensorRes) mustBe OK
-      contentType(updateSensorRes) mustBe Some("application/json")
-      val updateBody = contentAsJson(updateSensorRes)
-      (updateBody \ "sensor" \ "properties" \ "foo").as[String] mustEqual "bar"
+      status(getSensorRequest) mustBe NOT_FOUND
+      val getBody = contentAsJson(getSensorRequest)
+      (getBody \ "message").as[String] mustEqual "Sensor not found."
     }
   }
 }
