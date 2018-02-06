@@ -40,7 +40,9 @@ import views.html.{ auth => viewsAuth }
  */
 @Singleton
 class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoints: Datapoints, userDB: Users,
-    eventsDB: Events, conf: Configuration)(implicit val messagesApi: MessagesApi) extends AuthController with I18nSupport {
+  eventsDB: Events, conf: Configuration)(implicit val messagesApi: MessagesApi)
+    extends AuthController with I18nSupport {
+
   /**
    * add datapoint.
    *
@@ -105,35 +107,50 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
 
   def datapointSearch(operator: String, since: Option[String], until: Option[String], geocode: Option[String],
     stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
-    format: String, semi: Option[String], onlyCount: Boolean, purpose: Option[String]) = SecuredAction(WithService("serviceDownload")) { implicit request =>
+    format: String, semi: Option[String], onlyCount: Boolean, purpose: Option[String]) = UserAwareAction { implicit request =>
     //TODO: implement operator
-    implicit val user = request.identity
+    try {
+      val raw = datapoints.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, operator != "")
 
-    val raw = datapoints.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, operator != "")
-
-    val filtered = semi match {
-      case Some(season) => raw.filter(p => checkSeason(season, p.\("start_time").as[String]))
-      case None => raw
-    }
-
-    if (onlyCount) {
-      Ok(Json.obj("status" -> "OK", "datapointsLength" -> filtered.length))
-    } else {
-
-      if (purpose.isDefined) {
-        eventsDB.save(request.identity.asInstanceOf[User].id, request.queryString)
+      val filtered = semi match {
+        case Some(season) => raw.filter(p => checkSeason(season, p.\("start_time").as[String]))
+        case None => raw
       }
-      if (format == "csv") {
-        val toByteArray: Enumeratee[String, Array[Byte]] = Enumeratee.map[String] { s => s.getBytes }
-        Ok.chunked(JsonConvert.jsonToCSV(filtered) &> toByteArray &> Gzip.gzip())
-          .withHeaders(
-            ("Content-Disposition", "attachment; filename=datapoints.csv"),
-            ("Content-Encoding", "gzip")
-          )
-          .as(withCharset("text/csv"))
+
+      if (onlyCount) {
+        Ok(Json.obj("status" -> "OK", "datapointsLength" -> filtered.length))
+
       } else {
-        Ok(JsArray(filtered)).withHeaders("Content-Disposition" -> "attachment; filename=download.json")
+        request.identity match {
+          case Some(user) => {
+            if (purpose.isDefined) {
+              eventsDB.save(user.asInstanceOf[User].id, request.queryString)
+            }
+
+            if (format == "csv") {
+              val toByteArray: Enumeratee[String, Array[Byte]] = Enumeratee.map[String] { s => s.getBytes }
+              Ok.chunked(JsonConvert.jsonToCSV(filtered) &> toByteArray &> Gzip.gzip())
+                .withHeaders(
+                  ("Content-Disposition", "attachment; filename=datapoints.csv"),
+                  ("Content-Encoding", "gzip")
+                )
+                .as(withCharset("text/csv"))
+            } else {
+              Ok(JsArray(filtered)).withHeaders("Content-Disposition" -> "attachment; filename=download.json")
+
+            }
+          }
+          case None => {
+            val queryString: String =
+              routes.DatapointController.datapointDownload(since, until, geocode, sources, attributes, format).toString
+
+            Redirect(routes.Auth.signIn(Some(queryString)))
+          }
+        }
       }
+    } catch {
+      case e => BadRequest(Json.obj("status" -> "KO", "message" -> e.toString))
+
     }
   }
 
@@ -142,7 +159,8 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
 
     request.identity match {
       case Some(user) => {
-        Ok(views.html.sensor.download(since, until, geocode, sources, attributes, format))
+        val purpose = eventsDB.getLatestPurpose(user.id.getOrElse(0))
+        Ok(views.html.sensor.download(since, until, geocode, sources, attributes, format, purpose))
       }
       case None => {
         val queryString: String =
@@ -210,9 +228,11 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
       Logger.debug("trendsByRegion last 10 years: " + tenyearsago)
 
       val dataWholeYear: List[Double] = dataWithSeason.map(d => Parsers.parseDouble(d.\("data"))).flatten
-      val dataTenYears: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time")).getOrElse(new DateTime()).isAfter(tenyearsago))
+      val dataTenYears: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time"))
+        .getOrElse(new DateTime()).isAfter(tenyearsago))
         .map(d => Parsers.parseDouble(d.\("data"))).flatten
-      val dataLastYear: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time")).getOrElse(new DateTime()).isAfter(lastYear))
+      val dataLastYear: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time"))
+        .getOrElse(new DateTime()).isAfter(lastYear))
         .map(d => Parsers.parseDouble(d.\("data"))).flatten
 
       // create the result Jsobject

@@ -21,13 +21,6 @@
   }
   </p>
 
-  <p>@Html(Messages("index.explanation"))</p>
-  <p>@Messages("index.example")</p>
-  <ul>
-    <li><span class="text-info">service A</span>: @Messages("index.example.serviceA")</li>
-    <li><span class="text-info">service A</span> @Messages("and") <span class="text-info">service B</span>: @Messages("index.example.serviceA_serviceB")</li>
-    <li><span class="text-warning">master</span>: @Messages("index.example.master")</li>
-  </ul>
   @loggedUser.map { user =>
     <p class="lead">@Html(Messages("index.auth.status", s"""<span class="text-success">${user.fullName}</span>""", s"""<span class="text-info">${servicesString(user)}</span>"""))</p>
   }
@@ -36,31 +29,29 @@
     <thead>
       <tr>
         <th>@Messages("index.table.section")</th>
-        <th>@Messages("index.table.authobject")</th>
+        <th>@Messages("index.table.link")</th>
         <th>@Messages("index.table.services")</th>
         @if(loggedUser.isDefined) {
           <th>@Messages("index.table.allowed")</th>
         }
-        <th>@Messages("index.table.go")</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>Index</td>
-        <td>None</td>
-        <td>any</td>
+        <td>View Data</td>
+        <td></td>
+        <td>Any</td>
         @if(loggedUser.isDefined) {
           <td><span class="glyphicon glyphicon-ok"></span></td>
         }
-        <td><a href="@routes.HomeController.index">Index</a></td>
       </tr>
       <tr>
-        <td>Service A area</td>
-        <td>WithService("serviceA")</td>
-        <td><span class="text-info">service A</span> or <span class="text-warning">master</span></td>
+        <td>Download Data</td>
+        <td></td>
+        <td><span class="text-info">service Download</span> or <span class="text-warning">master</span></td>
         @loggedUser.map { implicit user =>
           <td>
-            @withServiceOrElse("serviceA") {
+            @withServiceOrElse("serviceDownload") {
               <span class="glyphicon glyphicon-ok"></span>
             }{
               <span class="glyphicon glyphicon-remove"></span>
@@ -69,37 +60,12 @@
         }
       </tr>
       <tr>
-        <td>Service A || Service B</td>
-        <td>WithService("serviceA", "serviceB")</td>
-        <td>(<span class="text-info">service A</span> or <span class="text-info">service B</span>) or <span class="text-warning">master</span></td>
-        @loggedUser.map { implicit user =>
-          <td>
-            @withServiceOrElse("serviceA", "serviceB") {
-              <span class="glyphicon glyphicon-ok"></span>
-            }{
-              <span class="glyphicon glyphicon-remove"></span>
-            }
-          </td>
-        }
-      </tr>
-      <tr>
-        <td>Service A && Service B</td>
-        <td><span class="text-primary">WithServices</span>("serviceA", "serviceB")</td>
-        <td>(<span class="text-info">service A</span> and <span class="text-info">service B</span>) or <span class="text-warning">master</span></td>
-        @loggedUser.map { implicit user =>
-          <td>
-            @withServicesOrElse("serviceA", "serviceB") {
-              <span class="glyphicon glyphicon-ok"></span>
-            }{
-              <span class="glyphicon glyphicon-remove"></span>
-            }
-          </td>
-        }
-      </tr>
-      <tr>
-        <td>Settings area</td>
-        <td>WithService("master")</td>
-        <td>only <span class="text-warning">master</span></td>
+        <td>Mangement</td>
+        <td>
+          <a  href="@routes.HomeController.manageUser">Manage User</a>
+          <a  href="@routes.HomeController.listEvents">List Download</a>
+        </td>
+        <td><span class="text-warning">master</span></td>
         @loggedUser.map { implicit user =>
           <td>
             @withServiceOrElse("master") {

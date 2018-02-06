@@ -23,7 +23,7 @@
       @events.map{ single_events =>
         <tr>
           <td>@(single_events.\("user").as[String])</td>
-          <td>@(single_events.\("date").as[String])</td>
+          <td>@(single_events.\("downloaddate").as[String])</td>
           <td>@(single_events.\("sources").as[String])</td>
           <td>@(single_events.\("attributes").as[String])</td>
           <td style="word-wrap: break-word;min-width: 160px;max-width: 160px;">@(single_events.\("geocode").as[String])</td>

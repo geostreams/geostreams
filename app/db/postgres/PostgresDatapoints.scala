@@ -233,6 +233,7 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
         st.setInt(i, sensor_id.get.toInt)
       }
       st.setFetchSize(50)
+      Logger.debug("Geostream search: " + st)
       val rs = st.executeQuery()
       val array = ListBuffer.empty[JsObject]
       while (rs.next()) {

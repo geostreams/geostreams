@@ -51,9 +51,9 @@ class HomeController @Inject() (val silhouette: Silhouette[MyEnv], val messagesA
       case Some(u) => {
         val oldServices = u.services
         val newUser = if (enable) {
-          usersDB.save(u.copy(services = "master" :: oldServices))
+          usersDB.save(u.copy(services = ("master" :: oldServices).distinct))
         } else {
-          usersDB.save(u.copy(services = oldServices.filter(_ != "master")))
+          usersDB.save(u.copy(services = oldServices.filter(_ != "master").distinct))
         }
         Ok(toJson(Map("status" -> "success")))
       }
