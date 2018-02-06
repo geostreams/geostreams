@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
+ 
+## [Unreleased]
+### Added
+- Event bus, record download actions
+  [GEOD-1009](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1009)
+- Authentication for downloads
+  [GEOD-1003](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1003)
+- Unit tests for sensors
+  [GEOD-1017](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1017)
+ 
+### Changed
+- Changed header and email title
+
+### Fixed 
+- Out of memory error when user requests large downloads
+  [GEOD-1015](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1015)
 
 ## [3.0.0-alpha.1] - 11-27-2017
 ### Added

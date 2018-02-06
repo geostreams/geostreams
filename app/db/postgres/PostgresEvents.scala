@@ -16,7 +16,7 @@ class PostgresEvents @Inject() (db: Database) extends Events {
   def save(userid: Option[Int], request: Map[String, Seq[String]]) = {
     db.withConnection { conn =>
       if (userid.isDefined) {
-        var query = "INSERT INTO events(userid, sources, attributes, geocode, since, until, purpose, date) " +
+        var query = "INSERT INTO events(userid, sources, attributes, geocode, since, until, purpose, downloaddate) " +
           "VALUES(?, ?, ?, ?, ?, ?, ?, now())"
 
         val st = conn.prepareStatement(query)
@@ -44,7 +44,8 @@ class PostgresEvents @Inject() (db: Database) extends Events {
   def listAll(): List[JsValue] = {
     var events: ListBuffer[JsValue] = ListBuffer()
     db.withConnection { conn =>
-      val query = "SELECT row_to_json(t, true) AS my_user FROM (SELECT users.email AS user, date, sources, attributes, geocode, since, until, purpose FROM events, users WHERE users.gid = events.userid) AS t"
+      val query = "SELECT row_to_json(t, true) AS events FROM (SELECT users.email AS user, downloaddate, sources, " +
+        "attributes, geocode, since, until, events.purpose FROM events, users WHERE users.gid = events.userid) AS t"
       val st = conn.prepareStatement(query)
       val rs = st.executeQuery()
 
@@ -56,6 +57,24 @@ class PostgresEvents @Inject() (db: Database) extends Events {
       st.close()
     }
     events.toList
+  }
+
+  def getLatestPurpose(userId: Int): String = {
+    var purpose: String = ""
+    db.withConnection { conn =>
+      val query = "SELECT row_to_json(t, true) AS my_user FROM (SELECT purpose FROM events WHERE userid = ? ORDER BY downloaddate DESC LIMIT 1) AS t"
+      val st = conn.prepareStatement(query)
+      st.setInt(1, userId)
+      val rs = st.executeQuery()
+
+      while (rs.next()) {
+        val data = rs.getString(1)
+        purpose = (Json.parse(data) \ "purpose").as[String]
+      }
+      rs.close()
+      st.close()
+    }
+    purpose
   }
 
 }

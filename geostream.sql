@@ -329,7 +329,7 @@ CREATE TABLE events (
       since varchar(50),
       until varchar(50),
       purpose varchar(1000),
-      date timestamp with time zone
+      downloaddate timestamp with time zone
 );
 
 ALTER TABLE events OWNER TO clowder;

@@ -15,4 +15,5 @@ import scala.util.parsing.json.JSONObject
 trait Events {
   def save(id: Option[Int], request: Map[String, Seq[String]]): Unit
   def listAll(): List[JsValue]
+  def getLatestPurpose(userId: Int): String
 }

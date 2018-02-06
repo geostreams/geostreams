@@ -1,12 +1,11 @@
 @(since: Option[String], until: Option[String], geocode: Option[String], sources: List[String],
-        attributes: List[String], queryFormat: String)(implicit loggedUser: Option[User], messages: Messages)
-
+        attributes: List[String], queryFormat: String, purpose: String)(implicit loggedUser: Option[User], messages: Messages)
 @views.html.templates.default(title = "Download", loggedUser) {
 
     <div>
         <div id="purposeform" class="form-group">
             <label for="purpose" class="form-control-label">Purpose</label>
-            <textarea class="form-control" id="purpose" rows="3"></textarea>
+            <textarea class="form-control" id="purpose" rows="3">@purpose</textarea>
         </div>
             <button type="button" class="btn btn-primary">Download</button>
             <p id="errormessage" class="text-danger" style="display: none">Please add your purpose (>5 letters).</p>
@@ -39,5 +38,3 @@
 
     </script>
 }
-
-
