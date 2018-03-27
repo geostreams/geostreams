@@ -1,6 +1,8 @@
 
 ################################################################################################
 # COMMON
+project.title=Project Title
+project.subtitle=Project Subtitle
 
 field.firstname=First name
 field.lastname=Last name

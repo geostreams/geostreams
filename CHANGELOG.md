@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [GEOD-1003](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1003)
 - Unit tests for sensors
   [GEOD-1017](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1017)
+- Adding Banner
+  [GEOD-1059](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1059)  
  
 ### Changed
 - Changed header and email title
