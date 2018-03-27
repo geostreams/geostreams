@@ -6,11 +6,8 @@
 
 
 @navbarContent = {
-	<ul class="nav navbar-nav navbar-right">
+	<ul class="navbar">
 	@loggedUser.map { user =>
-	<li class="navbar-text text-right" style="margin: 5px 15px">
-		@Html(Messages("topbar.hello", s"""<span class="text-success">${user.fullName}</span>""", s"""<span class="text-info">${user.services.mkString(", ")}</span>"""))
-	</li>
 
 	<li><a href="@routes.Auth.signOut">@Messages("signout")</a></li>
 	}.getOrElse {

@@ -9,3 +9,5 @@ target
 /generated-test
 /conf/application.conf
 .DS_Store
+out/
+geostreams-api-v3.iml
