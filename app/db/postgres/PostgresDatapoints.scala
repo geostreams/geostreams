@@ -1,24 +1,18 @@
 package db.postgres
 
-import java.sql.{ SQLException, Statement }
-import javax.inject.Inject
-import play.api.Logger
-import utils.Parsers
-import scala.collection.mutable.ListBuffer
+import java.sql.{ Statement, Timestamp }
+import java.text.SimpleDateFormat
 
 import db.{ Datapoints, Sensors }
+import javax.inject.Inject
 import models.DatapointModel
-import play.api.libs.json.{ JsObject, JsValue, Json, __ }
-import play.api.db.Database
 import models.DatapointModel._
-import java.text.SimpleDateFormat
-import java.sql.Timestamp
+import play.api.Logger
+import play.api.db.Database
+import play.api.libs.json.{ JsObject, JsValue, Json, _ }
+import utils.Parsers
 
 import scala.collection.mutable.ListBuffer
-import play.api.libs.json.{ JsObject, JsValue, Json, __ }
-import play.api.db.Database
-import play.api.libs.json._
-import play.api.libs.json.Json._
 
 /**
  * Store datapoints in Postgres.

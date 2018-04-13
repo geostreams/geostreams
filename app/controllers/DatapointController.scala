@@ -1,15 +1,14 @@
 package controllers
 
 import javax.inject.{ Inject, Singleton }
-
 import akka.util.ByteString
-import utils.{ Parsers, JsonConvert }
+import utils.{ BinHelper, JsonConvert, Parsers }
 import utils.silhouette._
 import com.mohiva.play.silhouette.api.Silhouette
-import com.mohiva.play.silhouette.api.{ Silhouette, LoginInfo, AuthenticatedEvent }
+import com.mohiva.play.silhouette.api.{ AuthenticatedEvent, LoginInfo, Silhouette }
 import play.api.mvc.{ Action, Controller }
 import play.api.{ Configuration, Logger }
-import db.{ Datapoints, Users, Events }
+import db.{ Datapoints, Events, Sensors, Users }
 import models.DatapointModel
 import models.User
 import play.api.data._
@@ -31,6 +30,7 @@ import akka.stream._
 import akka.stream.scaladsl._
 import com.sun.xml.internal.ws.api.message.Header
 import play.api.libs.iteratee.{ Enumeratee, Enumerator }
+import utils.DatapointsHelper.timeBins
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import views.html.{ auth => viewsAuth }
@@ -39,7 +39,7 @@ import views.html.{ auth => viewsAuth }
  * Datapoints contain the actual values together with a location and a time interval.
  */
 @Singleton
-class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoints: Datapoints, userDB: Users,
+class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB: Sensors, datapointDB: Datapoints, userDB: Users,
   eventsDB: Events, conf: Configuration)(implicit val messagesApi: MessagesApi)
     extends AuthController with I18nSupport {
 
@@ -58,7 +58,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
         BadRequest(Json.obj("status" -> "KO", "message" -> JsError.toJson(errors)))
       },
       datapoint => {
-        val id = datapoints.addDatapoint(datapoint)
+        val id = datapointDB.addDatapoint(datapoint)
         Ok(Json.obj("status" -> "ok", "id" -> id))
       }
     )
@@ -77,7 +77,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
         BadRequest(Json.obj("status" -> "KO", "message" -> JsError.toJson(errors)))
       },
       datapointlist => {
-        val datapintCount = datapoints.addDatapoints(datapointlist)
+        val datapintCount = datapointDB.addDatapoints(datapointlist)
         Ok(Json.obj("status" -> "ok", "count" -> datapintCount))
       }
     )
@@ -89,9 +89,9 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
    * @param id
    */
   def datapointDelete(id: Int) = SecuredAction(WithService("master")) {
-    datapoints.getDatapoint(id) match {
+    datapointDB.getDatapoint(id) match {
       case Some(datapoint) => {
-        datapoints.deleteDatapoint(id)
+        datapointDB.deleteDatapoint(id)
         Ok(Json.obj("status" -> "OK"))
       }
       case None => NotFound(Json.obj("message" -> "Datapoint not found."))
@@ -101,7 +101,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
   }
 
   def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String]) = SecuredAction(WithService("master")) {
-    datapoints.renameParam(oldParam, newParam, source, region)
+    datapointDB.renameParam(oldParam, newParam, source, region)
     Ok(Json.obj("status" -> "OK"))
   }
 
@@ -110,7 +110,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
     format: String, semi: Option[String], onlyCount: Boolean, purpose: Option[String]) = UserAwareAction { implicit request =>
     //TODO: implement operator
     try {
-      val raw = datapoints.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, operator != "")
+      val raw = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, operator != "")
 
       val filtered = semi match {
         case Some(season) => raw.filter(p => checkSeason(season, p.\("start_time").as[String]))
@@ -174,12 +174,116 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
   def datapointsBin(time: String, depth: Double, keepRaw: Boolean, since: Option[String], until: Option[String],
     geocode: Option[String], stream_id: Option[String], sensor_id: Option[String], sources: List[String],
     attributes: List[String]) = Action {
-    NotImplemented
+    // what happened if sensor id is not given??
+    // TODO list of special properties
+    val groupBy = List("DEPTH_CODE")
+    val addAll = List("source")
+    val ignore = groupBy ++ addAll
+
+    sensorDB.getSensor(sensor_id.get.toInt) match {
+      case Some(sensorObject) => {
+        val raw = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, true)
+
+        // list of result
+        val properties = collection.mutable.HashMap.empty[String, collection.mutable.HashMap[String, BinHelper]]
+
+        raw.map(sensor => {
+          val depthCode = sensor.\("properties").\("DEPTH_CODE") match {
+            case x: JsUndefined => "NA"
+            case x => Parsers.parseString(x)
+          }
+          val extras = Json.obj("depth_code" -> depthCode)
+
+          // get source
+          val source = sensor.\("properties").\("source") match {
+            case x: JsUndefined => ""
+            case x => Parsers.parseString(x)
+          }
+
+          // get depth
+          val coordinates = sensor.\("geometry").\("coordinates").as[JsArray]
+          val depthBin = depth * Math.ceil(Parsers.parseDouble(coordinates(2)).getOrElse(0.0) / depth)
+
+          // bin time
+          val startTime = Parsers.parseDate(sensor.\("start_time")).getOrElse(DateTime.now)
+          val endTime = Parsers.parseDate(sensor.\("end_time")).getOrElse(DateTime.now)
+          val times = timeBins(time, startTime, endTime)
+
+          sensor.\("properties").as[JsObject].fieldSet.filter(p => !ignore.contains(p._1)).foreach(f => {
+            // add to list of properies
+            val prop = Parsers.parseString(f._1)
+            val propertyBin = properties.getOrElseUpdate(prop, collection.mutable.HashMap.empty[String, BinHelper])
+
+            // add value to all bins
+            times.foreach(t => {
+              val key = prop + t._1 + depthBin + depthCode
+
+              // add data object
+              val bin = propertyBin.getOrElseUpdate(key, BinHelper(depthBin, t._1, extras, t._2))
+
+              // add source to result
+              if (source != "") {
+                bin.sources += source
+              }
+
+              // add values to array
+              Parsers.parseDouble(f._2) match {
+                case Some(v) => bin.doubles += v
+                case None =>
+                  f._2 match {
+                    case JsObject(_) => {
+                      val s = Parsers.parseString(f._2)
+                      if (s != "") {
+                        bin.array += s
+                      }
+                    }
+
+                    case _ => {
+                      val s = Parsers.parseString(f._2)
+                      if (s != "") {
+                        bin.strings += s
+                      }
+                    }
+
+                  }
+              }
+            })
+          })
+        })
+
+        // combine results
+        val result = properties.map { p =>
+          val elements = for (bin <- p._2.values if bin.doubles.length > 0 || bin.array.size > 0) yield {
+            val base = Json.obj("depth" -> bin.depth, "label" -> bin.label, "sources" -> bin.sources.toList)
+
+            val raw = if (keepRaw) {
+              Json.obj("doubles" -> bin.doubles.toList, "strings" -> bin.strings.toList)
+            } else {
+              Json.obj()
+            }
+
+            val dlen = bin.doubles.length
+            val average = if (dlen > 0) {
+              Json.obj("average" -> toJson(bin.doubles.sum / dlen), "count" -> dlen)
+            } else {
+              Json.obj("array" -> bin.array.toList, "count" -> bin.array.size)
+            }
+
+            // return object combining all pieces
+            base ++ bin.timeInfo ++ bin.extras ++ raw ++ average
+          }
+          // add data back to result, sorted by date.
+          (p._1, elements.toList.sortWith((x, y) => x.\("date").toString() < y.\("date").toString()))
+        }
+        Ok(Json.obj("status" -> "OK", "sensor_name" -> sensorObject.name, "properties" -> Json.toJson(result.toMap)))
+      }
+      case None => Ok(Json.obj("status" -> "no sensor"))
+    }
   }
 
   def trendsByRegionDetail(attribute: String, geocode: String, season: String) = Action {
     // rawdata has 3 field: data, region, time.
-    val rawdata = datapoints.trendsByRegion(attribute, geocode)
+    val rawdata = datapointDB.trendsByRegion(attribute, geocode)
     // for debug
     //print(rawdata.head)
     // group rawdata by date get Map[Some[Datetime], List(data, region, time)]
@@ -205,7 +309,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
 
   def trendsByRegion(attribute: String, geocode: String, season: String) = Action {
     // rawdata has 3 field: data, region, time.
-    val rawdata = datapoints.trendsByRegion(attribute, geocode)
+    val rawdata = datapointDB.trendsByRegion(attribute, geocode)
 
     // for debug
     //println(rawdata.head)
@@ -274,7 +378,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
    * @param id
    */
   def datapointGet(id: Int) = Action {
-    datapoints.getDatapoint(id) match {
+    datapointDB.getDatapoint(id) match {
       case Some(datapoint) => Ok(Json.obj("status" -> "OK", "datapoint" -> datapoint))
       case None => NotFound(Json.obj("message" -> "Datapoint not found."))
     }
