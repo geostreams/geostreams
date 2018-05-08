@@ -65,6 +65,27 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
     }
   }
 
+  def getBinForStream(time: String, stream_id: Int) {
+    db.withConnection { conn =>
+      val query = "SELECT extract(year from start_time) as yyyy, avg(cast(data ->> \"'temperature\"' as double precision)) from datapoints where stream_id = " + stream_id +
+        "  group by yyyy;"
+
+      val st = conn.prepareStatement(query)
+      st.setInt(1, stream_id)
+      Logger.debug("Streams get statement: " + st)
+      val rs = st.executeQuery()
+      var streamData = ""
+      while (rs.next()) {
+        streamData += rs.getString(1)
+      }
+      rs.close()
+      st.close()
+      val asJson = Json.parse(streamData).as[JsObject]
+      Logger.debug("Got as Json")
+
+    }
+  }
+
   def patchStreamMetadata(id: Int, data: String): Option[StreamModel] = {
     db.withConnection { conn =>
       val query = "SELECT row_to_json(t, true) AS my_stream FROM (" +

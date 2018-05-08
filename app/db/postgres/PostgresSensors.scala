@@ -135,7 +135,7 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
     }
   }
 
-  def getSensorStreams(id: Int): JsValue = {
+  def getSensorStreams(id: Int): List[JsValue] = {
     db.withConnection { conn =>
       var data = ""
       val query = "SELECT array_to_json(array_agg(t),true) As my_places FROM " +
@@ -144,12 +144,17 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
       st.setInt(1, id.toInt)
       Logger.debug("Get streams by sensor statement: " + st)
       val rs = st.executeQuery()
+      var sensors: ListBuffer[JsValue] = ListBuffer()
       while (rs.next()) {
+        var current_data = rs.getString(1)
+        sensors += Json.parse(current_data)
         data += rs.getString(1)
       }
       rs.close()
       st.close()
-      Json.parse(data)
+      var asJson = Json.parse(data)
+
+      sensors.toList
     }
   }
 

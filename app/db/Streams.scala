@@ -15,5 +15,6 @@ trait Streams {
   def patchStreamMetadata(id: Int, data: String): Option[StreamModel]
   def updateStreamStats(stream_id: Option[Int])
   def searchStreams(geocode: Option[String], stream_name: Option[String]): List[StreamModel]
+  def getBinForStream(time: String, stream_id: Int)
   def deleteStream(id: Int): Unit
 }
