@@ -176,6 +176,9 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
     attributes: List[String]) = Action {
     // what happened if sensor id is not given??
     // TODO list of special properties
+
+    // TODO - remove depth code,
+
     val groupBy = List("DEPTH_CODE")
     val addAll = List("source")
     val ignore = groupBy ++ addAll
@@ -252,6 +255,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
         })
 
         // combine results
+        // TODO breaks for depth 0.0
         val result = properties.map { p =>
           val elements = for (bin <- p._2.values if bin.doubles.length > 0 || bin.array.size > 0) yield {
             val base = Json.obj("depth" -> bin.depth, "label" -> bin.label, "sources" -> bin.sources.toList)
