@@ -1,16 +1,17 @@
 package db.postgres
 
 import java.sql.{ SQLException, Statement }
+
 import javax.inject.Inject
 import play.api.Logger
 import play.api.libs.json.{ JsObject, JsValue, Json, __ }
 import play.api.db.Database
 import play.api.libs.json._
 import play.api.libs.json.Json._
-import scala.collection.mutable.ListBuffer
 
+import scala.collection.mutable.ListBuffer
 import db.Sensors
-import models.SensorModel
+import models.{ SensorModel, StreamModel }
 import models.SensorModel._
 
 /**
@@ -144,17 +145,17 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
       st.setInt(1, id.toInt)
       Logger.debug("Get streams by sensor statement: " + st)
       val rs = st.executeQuery()
-      var sensors: ListBuffer[JsValue] = ListBuffer()
+      var streams: ListBuffer[JsValue] = ListBuffer()
       while (rs.next()) {
         var current_data = rs.getString(1)
-        sensors += Json.parse(current_data)
+        streams += Json.parse(current_data)
         data += rs.getString(1)
       }
       rs.close()
       st.close()
       var asJson = Json.parse(data)
 
-      sensors.toList
+      streams.toList
     }
   }
 

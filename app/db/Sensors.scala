@@ -2,7 +2,7 @@ package db
 
 import com.google.inject.ImplementedBy
 import db.postgres.PostgresSensors
-import models.SensorModel
+import models.{ SensorModel, StreamModel }
 import play.api.libs.json.{ JsObject, JsValue }
 
 /**

@@ -8,7 +8,7 @@ import com.mohiva.play.silhouette.api.Silhouette
 import com.mohiva.play.silhouette.api.{ AuthenticatedEvent, LoginInfo, Silhouette }
 import play.api.mvc.{ Action, Controller }
 import play.api.{ Configuration, Logger }
-import db.{ Datapoints, Events, Sensors, Users }
+import db.{ Datapoints, Events, Sensors, Users, Streams }
 import models.DatapointModel
 import models.User
 import play.api.data._
@@ -40,7 +40,7 @@ import views.html.{ auth => viewsAuth }
  */
 @Singleton
 class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB: Sensors, datapointDB: Datapoints, userDB: Users,
-  eventsDB: Events, conf: Configuration)(implicit val messagesApi: MessagesApi)
+  eventsDB: Events, streamDB: Streams, conf: Configuration)(implicit val messagesApi: MessagesApi)
     extends AuthController with I18nSupport {
 
   /**
@@ -303,6 +303,11 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
         val streams_of_sensor = sensorDB.getSensorStreams(Integer.parseInt(sensor_id.get))
 
         // TODO for each stream get the bin
+        val bins: ListBuffer[JsValue] = ListBuffer.empty[JsValue]
+        streams_of_sensor.map(stream => {
+          var current_bin = streamDB.getBinForStream(time,1)
+          bins += current_bin
+        });
 
         val raw = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, true)
 
