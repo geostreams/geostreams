@@ -306,7 +306,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
         val bins: ListBuffer[JsValue] = ListBuffer.empty[JsValue]
         streams_of_sensor.map(stream => {
           var current_bin = streamDB.getBinForStream(time, stream.id)
-          bins += current_bin
+          bins ++= current_bin
         });
 
         val raw = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, true)
@@ -405,7 +405,8 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
           // add data back to result, sorted by date.
           (p._1, elements.toList.sortWith((x, y) => x.\("date").toString() < y.\("date").toString()))
         }
-        Ok(Json.obj("status" -> "OK", "sensor_name" -> sensorObject.name, "properties" -> Json.toJson(result.toMap)))
+        // Ok(Json.obj("status" -> "OK", "sensor_name" -> sensorObject.name, "properties" -> Json.toJson(result.toMap)))
+        Ok(Json.obj("status" -> "OK", "sensor_name" -> sensorObject.name, "bins" -> Json.toJson(bins)))
       }
       case None => Ok(Json.obj("status" -> "no sensor"))
     }

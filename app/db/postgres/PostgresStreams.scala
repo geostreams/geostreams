@@ -65,26 +65,32 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
     }
   }
 
-  def getBinForStream(time: String, stream_id: Int): JsValue = {
-    db.withConnection { conn =>
-      val query = "SELECT extract(year from start_time) as yyyy, avg(cast(data ->> 'temperature' as double precision)) from datapoints where stream_id = " + stream_id +
-        "  group by yyyy"
+  def getBinForStream(time: String, stream_id: Int): List[JsValue] = {
+    var bins: ListBuffer[JsValue] = ListBuffer()
+    if (time.equals("year")){
+      db.withConnection { conn =>
+        val query = "SELECT row_to_json(t,true) AS my_bin FROM (SELECT extract(year from start_time) as yyyy, avg(cast(data ->> 'temperature' as double precision)) from datapoints where stream_id = " + stream_id +
+          "  group by yyyy ) AS t"
 
-      val st = conn.prepareStatement(query)
-      // st.setInt(1, stream_id)
-      Logger.debug("Streams get statement: " + st)
-      val rs = st.executeQuery()
-      var streamData = ""
-      while (rs.next()) {
-        streamData += rs.getString(1)
-      }
-      rs.close()
-      st.close()
-      val asJson = Json.parse(streamData).as[JsObject]
-      Logger.debug("Got as Json")
-      asJson
+        val st = conn.prepareStatement(query)
+        // st.setInt(1, stream_id)
+        Logger.debug("Streams get statement: " + st)
+        val rs = st.executeQuery()
+        var bins: ListBuffer[JsValue] = ListBuffer()
+        var streamData = ""
+        while (rs.next()) {
+          var current = rs;
+          streamData += rs.getString(1)
+          bins += Json.parse(streamData).as[JsObject]
+        }
+        rs.close()
+        st.close()
+    }
+    if (time.equals("month")){
 
     }
+    bins.toList
+
   }
 
   def patchStreamMetadata(id: Int, data: String): Option[StreamModel] = {
