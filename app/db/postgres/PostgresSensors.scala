@@ -136,26 +136,45 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
     }
   }
 
-  def getSensorStreams(id: Int): List[JsValue] = {
+  def getSensorStreams(id: Int): List[StreamModel] = {
     db.withConnection { conn =>
       var data = ""
-      val query = "SELECT array_to_json(array_agg(t),true) As my_places FROM " +
-        "(SELECT streams.gid As stream_id, streams.name As name FROM streams WHERE sensor_id=?) As t;"
+      //  val query = "SELECT * FROM streams WHERE sensor_id= " + id
+      //      val query = "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
+      //        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
+      //        "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(end_time AT TIME " +
+      //        "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams WHERE sensor_id = " + id
+
+      var query = "SELECT row_to_json(t,true) As my_places FROM " +
+        "(SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
+        "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(end_time AT TIME " +
+        "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams"
+      query += " WHERE sensor_id = " + id + " ) As t"
       val st = conn.prepareStatement(query)
-      st.setInt(1, id.toInt)
+      //st.setInt(1, id.toInt)
       Logger.debug("Get streams by sensor statement: " + st)
       val rs = st.executeQuery()
       var streams: ListBuffer[JsValue] = ListBuffer()
+      var stream_objects: ListBuffer[StreamModel] = ListBuffer()
       while (rs.next()) {
-        var current_data = rs.getString(1)
+        val current = rs.getString(1)
+        var current_data = current
         streams += Json.parse(current_data)
+        try {
+          stream_objects += Json.parse(current_data).as[StreamModel]
+        } catch {
+          case e: Exception => {
+            print(e.toString)
+          }
+        }
         data += rs.getString(1)
       }
       rs.close()
       st.close()
       var asJson = Json.parse(data)
 
-      streams.toList
+      stream_objects.toList
     }
   }
 

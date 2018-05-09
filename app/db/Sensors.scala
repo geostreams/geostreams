@@ -14,7 +14,7 @@ trait Sensors {
   def getSensor(id: Int): Option[SensorModel]
   def updateSensorMetadata(id: Int, update: JsObject): JsValue
   def getSensorStats(id: Int): JsValue
-  def getSensorStreams(id: Int): List[JsValue]
+  def getSensorStreams(id: Int): List[StreamModel]
   def updateSensorStats(id: Option[Int]): Unit
   def searchSensors(geocode: Option[String], sensor_name: Option[String]): List[SensorModel]
   def deleteSensor(id: Int): Unit

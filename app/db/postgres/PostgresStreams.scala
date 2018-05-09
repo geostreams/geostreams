@@ -67,11 +67,11 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
 
   def getBinForStream(time: String, stream_id: Int): JsValue = {
     db.withConnection { conn =>
-      val query = "SELECT extract(year from start_time) as yyyy, avg(cast(data ->> \"'temperature\"' as double precision)) from datapoints where stream_id = " + stream_id +
-        "  group by yyyy;"
+      val query = "SELECT extract(year from start_time) as yyyy, avg(cast(data ->> 'temperature' as double precision)) from datapoints where stream_id = " + stream_id +
+        "  group by yyyy"
 
       val st = conn.prepareStatement(query)
-      st.setInt(1, stream_id)
+      // st.setInt(1, stream_id)
       Logger.debug("Streams get statement: " + st)
       val rs = st.executeQuery()
       var streamData = ""

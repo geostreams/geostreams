@@ -305,7 +305,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
         // TODO for each stream get the bin
         val bins: ListBuffer[JsValue] = ListBuffer.empty[JsValue]
         streams_of_sensor.map(stream => {
-          var current_bin = streamDB.getBinForStream(time,1)
+          var current_bin = streamDB.getBinForStream(time, stream.id)
           bins += current_bin
         });
 
