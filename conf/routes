@@ -7,7 +7,8 @@
 GET           /                                                         controllers.HomeController.index
 GET           /api/geostreams/*page                                     controllers.HomeController.oldApi(page)
 GET           /javascriptRoutes                                         controllers.HomeController.javascriptRoutes
-GET           /datapoints/download                                      controllers.DatapointController.datapointDownload(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json")
+GET           /datapoints/download                                      controllers.HomeController.datapointDownload(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "csv")
+GET           /datapoints/DownloadCSV                                   controllers.HomeController.datapointDownloadCSV(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, purpose: String)
 
 
 # Authentication pages
@@ -52,11 +53,11 @@ POST          /api/datapoints                                           controll
 POST          /api/datapoints/bulk                                      controllers.DatapointController.datapointsCreate(invalidateCache: Boolean ?= true)
 DELETE        /api/datapoints/:id                                       controllers.DatapointController.datapointDelete(id: Int)
 PUT           /api/datapoints/renameParam/:oldParam/:newParam           controllers.DatapointController.renameParam(oldParam: String, newParam: String, source: Option[String] ?= None, region: Option[String] ?= None)
-GET           /api/datapoints/averages                                  controllers.DatapointController.datapointSearch(operator = "averages", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false, purpose: Option[String] ?= None)
-GET           /api/datapoints/trends                                    controllers.DatapointController.datapointSearch(operator = "trends", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false, purpose: Option[String] ?= None)
+GET           /api/datapoints/averages                                  controllers.DatapointController.datapointAverage(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
+GET           /api/datapoints/trends                                    controllers.DatapointController.datapointTrends(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/datapoints/bin/:time/:depth                          controllers.DatapointController.datapointsBin(time, depth: Double, raw: Boolean ?= false, since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty)
 GET           /api/datapoints/:id                                       controllers.DatapointController.datapointGet(id: Int)
-GET           /api/datapoints                                           controllers.DatapointController.datapointSearch(operator = "", since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false, purpose: Option[String] ?= None)
+GET           /api/datapoints                                           controllers.DatapointController.datapointSearch(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/trends/region/:attribute                             controllers.DatapointController.trendsByRegion(attribute: String, geocode: String, season: String ?= "spring")
 GET           /api/trends/region/detail/:attribute                      controllers.DatapointController.trendsByRegionDetail(attribute: String, geocode: String, season: String ?= "spring")
 
@@ -77,8 +78,7 @@ GET           /postgresql                                               controll
 GET           /assets/*file                                             controllers.Assets.versioned(path="/public", file: Asset)
 
 # Examples
-GET           /user                                                     controllers.UserController.userGet
-POST          /user                                                     controllers.UserController.userPost
+POST	      /api/authenticate					   	                    controllers.UserController.tokenAuthenticate
 PUT           /sensor                                                   controllers.SensorController.sensorFormPost
 GET           /sensor                                                   controllers.SensorController.sensorFormGet
 

@@ -1,47 +1,31 @@
 package controllers
 
-import javax.inject.{ Inject, Singleton }
-
-import akka.util.ByteString
-import utils.{ Parsers, JsonConvert }
-import utils.silhouette._
 import com.mohiva.play.silhouette.api.Silhouette
-import com.mohiva.play.silhouette.api.{ Silhouette, LoginInfo, AuthenticatedEvent }
-import play.api.mvc.{ Action, Controller }
-import play.api.{ Configuration, Logger }
-import db.{ Datapoints, Users, Events }
+import db.{Datapoints, Events, Users}
+import javax.inject.{Inject, Singleton}
 import models.DatapointModel
-import models.User
-import play.api.data._
-import play.api.db.Database
+import org.joda.time.DateTime
 import play.api.i18n._
-import play.api.libs.functional.syntax._
-import play.api.mvc._
-import play.api.libs.json._
+import play.api.libs.iteratee.{Enumeratee, Enumerator}
 import play.api.libs.json.Json._
+import play.api.libs.json._
+import play.api.mvc.Action
+import play.api.{Configuration, Logger}
+import play.filters.gzip.Gzip
+import utils.silhouette._
+import utils.{JsonConvert, Parsers}
+import views.html.{auth => viewsAuth}
 
 import scala.collection.mutable.ListBuffer
-import org.joda.time.{ DateTime, IllegalInstantException }
-import org.joda.time.format.{ DateTimeFormat, ISODateTimeFormat }
-import play.filters.gzip.Gzip
-import play.api.mvc._
-import play.api.libs.json._
-import play.api.libs.json.Json._
-import akka.stream._
-import akka.stream.scaladsl._
-import com.sun.xml.internal.ws.api.message.Header
-import play.api.libs.iteratee.{ Enumeratee, Enumerator }
-
 import scala.concurrent.ExecutionContext.Implicits.global
-import views.html.{ auth => viewsAuth }
 
 /**
  * Datapoints contain the actual values together with a location and a time interval.
  */
 @Singleton
-class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoints: Datapoints, userDB: Users,
+class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datapoints: Datapoints, userDB: Users,
   eventsDB: Events, conf: Configuration)(implicit val messagesApi: MessagesApi)
-    extends AuthController with I18nSupport {
+    extends AuthTokenController with I18nSupport {
 
   /**
    * add datapoint.
@@ -97,7 +81,6 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
       case None => NotFound(Json.obj("message" -> "Datapoint not found."))
 
     }
-
   }
 
   def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String]) = SecuredAction(WithService("master")) {
@@ -105,12 +88,24 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
     Ok(Json.obj("status" -> "OK"))
   }
 
-  def datapointSearch(operator: String, since: Option[String], until: Option[String], geocode: Option[String],
+  def datapointAverage(since: Option[String], until: Option[String], geocode: Option[String],
     stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
-    format: String, semi: Option[String], onlyCount: Boolean, purpose: Option[String]) = UserAwareAction { implicit request =>
-    //TODO: implement operator
+    format: String, semi: Option[String], onlyCount: Boolean) = Action {
+    NotImplemented
+  }
+
+  def datapointTrends(since: Option[String], until: Option[String], geocode: Option[String],
+    stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
+    format: String, semi: Option[String], onlyCount: Boolean) = Action {
+    NotImplemented
+  }
+
+  def datapointSearch(since: Option[String], until: Option[String], geocode: Option[String],
+    stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
+    format: String, semi: Option[String], onlyCount: Boolean) = UserAwareAction { implicit request =>
+
     try {
-      val raw = datapoints.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, operator != "")
+      val raw = datapoints.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, false)
 
       val filtered = semi match {
         case Some(season) => raw.filter(p => checkSeason(season, p.\("start_time").as[String]))
@@ -123,13 +118,14 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
       } else {
         request.identity match {
           case Some(user) => {
-            if (purpose.isDefined) {
-              eventsDB.save(user.asInstanceOf[User].id, request.queryString)
-            }
 
             if (format == "csv") {
               val toByteArray: Enumeratee[String, Array[Byte]] = Enumeratee.map[String] { s => s.getBytes }
-              Ok.chunked(JsonConvert.jsonToCSV(filtered) &> toByteArray &> Gzip.gzip())
+              val strings = raw.length match {
+                case 0 => Enumerator("no data")
+                case _ => JsonConvert.jsonToCSV(filtered)
+              }
+              Ok.chunked(strings &> toByteArray &> Gzip.gzip())
                 .withHeaders(
                   ("Content-Disposition", "attachment; filename=datapoints.csv"),
                   ("Content-Encoding", "gzip")
@@ -137,13 +133,11 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
                 .as(withCharset("text/csv"))
             } else {
               Ok(JsArray(filtered)).withHeaders("Content-Disposition" -> "attachment; filename=download.json")
-
             }
           }
           case None => {
             val queryString: String =
-              routes.DatapointController.datapointDownload(since, until, geocode, sources, attributes, format).toString
-
+              routes.HomeController.datapointDownload(since, until, geocode, sources, attributes, format).toString
             Redirect(routes.Auth.signIn(Some(queryString)))
           }
         }
@@ -151,23 +145,6 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], datapoin
     } catch {
       case e => BadRequest(Json.obj("status" -> "KO", "message" -> e.toString))
 
-    }
-  }
-
-  def datapointDownload(since: Option[String], until: Option[String], geocode: Option[String],
-    sources: List[String], attributes: List[String], format: String) = UserAwareAction { implicit request =>
-
-    request.identity match {
-      case Some(user) => {
-        val purpose = eventsDB.getLatestPurpose(user.id.getOrElse(0))
-        Ok(views.html.sensor.download(since, until, geocode, sources, attributes, format, purpose))
-      }
-      case None => {
-        val queryString: String =
-          routes.DatapointController.datapointDownload(since, until, geocode, sources, attributes, format).toString
-
-        Redirect(routes.Auth.signIn(Some(queryString)))
-      }
     }
   }
 

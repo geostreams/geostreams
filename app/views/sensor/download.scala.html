@@ -1,10 +1,12 @@
 @(since: Option[String], until: Option[String], geocode: Option[String], sources: List[String],
-        attributes: List[String], queryFormat: String, purpose: String)(implicit loggedUser: Option[User], messages: Messages)
-@views.html.templates.default(title = "Download", loggedUser) {
+        attributes: List[String], purpose: String)(implicit user: User, messages: Messages)
+@views.html.templates.logged(title = "Download") {
 
     <div>
         <div id="purposeform" class="form-group">
-            <label for="purpose" class="form-control-label">Purpose</label>
+            <p>@Messages("purpose")</p>
+            <label for="purpose" class="form-control-label">@Messages("purpose.subtitle")</label>
+
             <textarea class="form-control" id="purpose" rows="3">@purpose</textarea>
         </div>
             <button type="button" class="btn btn-primary">Download</button>
@@ -27,7 +29,8 @@
                     @attributes.map{ a =>
                     attributesString.push("@a");
                     }
-                    var request = jsRoutes.controllers.DatapointController.datapointSearch("", sinceString, untilString, geoString, null, null, sourcesString, attributesString, "@queryFormat", null, false, purposeText );
+                    var request = jsRoutes.controllers.HomeController.datapointDownloadCSV(sinceString, untilString,
+                            geoString, sourcesString, attributesString, purposeText );
                     window.location = request.url;
                 } else {
                     $("#errormessage").show();

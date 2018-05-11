@@ -121,8 +121,8 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
     }
   }
 
-  def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String], sensor_id: Option[String],
-    source: List[String], attributes: List[String], sortByStation: Boolean): List[JsObject] = {
+  def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String],
+    sensor_id: Option[String], source: List[String], attributes: List[String], sortByStation: Boolean): List[JsObject] = {
     db.withConnection { conn =>
       val parts = geocode match {
         case Some(x) => x.split(",")

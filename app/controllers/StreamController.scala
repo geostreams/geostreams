@@ -1,27 +1,22 @@
 package controllers
 
-import javax.inject.{ Inject, Singleton }
-
-import db.{ Sensors, Streams }
-import models.{ GeometryModel, SensorModel, StreamModel }
-import play.api.mvc._
-import play.api.mvc.{ Action, Controller }
-import play.api.mvc.Results._
-import play.api.data._
+import com.mohiva.play.silhouette.api.Silhouette
+import db.{Sensors, Streams}
+import javax.inject.{Inject, Singleton}
+import models.StreamModel
 import play.api.db.Database
 import play.api.i18n._
-import play.api.libs.json._
 import play.api.libs.json.Json._
-import play.api.libs.functional.syntax._
+import play.api.libs.json._
+import play.api.mvc.{Action, _}
 import utils.silhouette._
-import com.mohiva.play.silhouette.api.Silhouette
 
 /**
  * Streams are a way of grouping datapoints together. A stream has to belong to a `Sensor` and and `Datapoint` has to
  * belong to a `Stream`.
  */
 @Singleton
-class StreamController @Inject() (val silhouette: Silhouette[MyEnv], db: Database, sensors: Sensors, streams: Streams)(implicit val messagesApi: MessagesApi) extends AuthController with I18nSupport {
+class StreamController @Inject() (val silhouette: Silhouette[TokenEnv], db: Database, sensors: Sensors, streams: Streams)(implicit val messagesApi: MessagesApi) extends AuthTokenController with I18nSupport {
 
   /**
    * Create stream.
@@ -135,6 +130,5 @@ class StreamController @Inject() (val silhouette: Silhouette[MyEnv], db: Databas
       }
       case None => NotFound(Json.obj("message" -> "Stream not found."))
     }
-
   }
 }
