@@ -1,9 +1,10 @@
 package controllers
 
-import java.io.{PrintWriter, StringWriter}
+import java.io.{ PrintWriter, StringWriter }
 
+import akka.stream.scaladsl.Source
 import com.mohiva.play.silhouette.api.Silhouette
-import db.{Datapoints, Events, Users}
+import db.{ Datapoints, Events, Users }
 import javax.inject._
 import models._
 import play.api._
@@ -69,27 +70,48 @@ class HomeController @Inject() (val silhouette: Silhouette[CookieEnv], val messa
   }
 
   def datapointDownload(since: Option[String], until: Option[String], geocode: Option[String],
-    sources: List[String], attributes: List[String], format: String) = SecuredAction(WithCookieService("serviceDownload")) { implicit request =>
+    sources: List[String], attributes: List[String], sensor_id: Option[String]) = UserAwareAction { implicit request =>
 
-    val purpose = eventsDB.getLatestPurpose(request.identity.id.getOrElse(0))
-    Ok(views.html.sensor.download(since, until, geocode, sources, attributes, purpose))
+    request.identity match {
+      case Some(aUser) => {
+        implicit val user = request.identity.get
+        val purpose = eventsDB.getLatestPurpose(aUser.id.getOrElse(0))
+
+        Ok(views.html.sensor.download(since, until, geocode, sources, attributes, sensor_id, purpose))
+      }
+      case None => {
+        val queryString: String =
+          routes.HomeController.datapointDownload(since, until, geocode, sources, attributes, sensor_id).toString
+
+        Redirect(routes.Auth.signIn(Some(queryString)))
+      }
+    }
   }
 
   def datapointDownloadCSV(since: Option[String], until: Option[String], geocode: Option[String],
-    sources: List[String], attributes: List[String],
+    sources: List[String], attributes: List[String], sensor_id: Option[String],
     purpose: String) = SecuredAction(WithCookieService("serviceDownload")) { implicit request =>
 
     try {
-      val raw = datapointsDB.searchDatapoints(since, until, geocode, None, None, sources, attributes, false)
+      val raw = datapointsDB.searchDatapoints(since, until, geocode, None, sensor_id, sources, attributes, false)
       eventsDB.save(request.identity.asInstanceOf[User].id, request.queryString)
+      if (raw.length > 0) {
+        val toByteArray: Enumeratee[String, Array[Byte]] = Enumeratee.map[String] { s => s.getBytes }
+        Ok.chunked(JsonConvert.jsonToCSV(raw) &> toByteArray &> Gzip.gzip())
+          .withHeaders(
+            ("Content-Disposition", "attachment; filename=datapoints.csv"),
+            ("Content-Encoding", "gzip")
+          )
+          .as(withCharset("text/csv"))
 
-      val toByteArray: Enumeratee[String, Array[Byte]] = Enumeratee.map[String] { s => s.getBytes }
-      Ok.chunked(JsonConvert.jsonToCSV(raw) &> toByteArray &> Gzip.gzip())
-        .withHeaders(
-          ("Content-Disposition", "attachment; filename=datapoints.csv"),
-          ("Content-Encoding", "gzip")
-        )
-        .as(withCharset("text/csv"))
+      } else {
+        val source = Source.apply(List("no data"))
+        Ok.chunked(source)
+          .withHeaders(
+            ("Content-Disposition", "attachment; filename=datapoints.csv")
+          )
+          .as(withCharset("text/csv"))
+      }
 
     } catch {
       case e => {

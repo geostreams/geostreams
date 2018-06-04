@@ -1,20 +1,20 @@
 package controllers
 
 import com.mohiva.play.silhouette.api.Silhouette
-import db.{Datapoints, Events, Users}
-import javax.inject.{Inject, Singleton}
+import db.{ Datapoints, Events, Users }
+import javax.inject.{ Inject, Singleton }
 import models.DatapointModel
 import org.joda.time.DateTime
 import play.api.i18n._
-import play.api.libs.iteratee.{Enumeratee, Enumerator}
+import play.api.libs.iteratee.{ Enumeratee, Enumerator }
 import play.api.libs.json.Json._
 import play.api.libs.json._
 import play.api.mvc.Action
-import play.api.{Configuration, Logger}
+import play.api.{ Configuration, Logger }
 import play.filters.gzip.Gzip
 import utils.silhouette._
-import utils.{JsonConvert, Parsers}
-import views.html.{auth => viewsAuth}
+import utils.{ JsonConvert, Parsers }
+import views.html.{ auth => viewsAuth }
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -136,9 +136,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datap
             }
           }
           case None => {
-            val queryString: String =
-              routes.HomeController.datapointDownload(since, until, geocode, sources, attributes, format).toString
-            Redirect(routes.Auth.signIn(Some(queryString)))
+            Forbidden(Json.obj("status" -> "KO", "message" -> "please provide a valid token"))
           }
         }
       }

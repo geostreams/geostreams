@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [GEOD-1017](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1017)
 - Adding Banner
   [GEOD-1059](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1059)  
+- Add sensor id is not in the download URL
+  [GEOD-1101](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1101)  
  
 ### Changed
 - Changed header and email title

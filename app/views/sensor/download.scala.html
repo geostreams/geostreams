@@ -1,5 +1,5 @@
 @(since: Option[String], until: Option[String], geocode: Option[String], sources: List[String],
-        attributes: List[String], purpose: String)(implicit user: User, messages: Messages)
+        attributes: List[String], sensor_id: Option[String], purpose: String)(implicit user: User, messages: Messages)
 @views.html.templates.logged(title = "Download") {
 
     <div>
@@ -29,8 +29,9 @@
                     @attributes.map{ a =>
                     attributesString.push("@a");
                     }
+                    var sensorString = @sensor_id.getOrElse("null");
                     var request = jsRoutes.controllers.HomeController.datapointDownloadCSV(sinceString, untilString,
-                            geoString, sourcesString, attributesString, purposeText );
+                            geoString, sourcesString, attributesString, sensorString, purposeText );
                     window.location = request.url;
                 } else {
                     $("#errormessage").show();

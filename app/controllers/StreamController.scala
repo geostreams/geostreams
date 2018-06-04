@@ -1,14 +1,14 @@
 package controllers
 
 import com.mohiva.play.silhouette.api.Silhouette
-import db.{Sensors, Streams}
-import javax.inject.{Inject, Singleton}
+import db.{ Sensors, Streams }
+import javax.inject.{ Inject, Singleton }
 import models.StreamModel
 import play.api.db.Database
 import play.api.i18n._
 import play.api.libs.json.Json._
 import play.api.libs.json._
-import play.api.mvc.{Action, _}
+import play.api.mvc.{ Action, _ }
 import utils.silhouette._
 
 /**

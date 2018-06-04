@@ -7,8 +7,8 @@
 GET           /                                                         controllers.HomeController.index
 GET           /api/geostreams/*page                                     controllers.HomeController.oldApi(page)
 GET           /javascriptRoutes                                         controllers.HomeController.javascriptRoutes
-GET           /datapoints/download                                      controllers.HomeController.datapointDownload(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "csv")
-GET           /datapoints/DownloadCSV                                   controllers.HomeController.datapointDownloadCSV(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, purpose: String)
+GET           /datapoints/download                                      controllers.HomeController.datapointDownload(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, sensor_id: Option[String] ?= None)
+GET           /datapoints/DownloadCSV                                   controllers.HomeController.datapointDownloadCSV(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, sensor_id: Option[String] ?= None, purpose: String)
 
 
 # Authentication pages
