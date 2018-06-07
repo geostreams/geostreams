@@ -334,6 +334,37 @@ CREATE TABLE events (
 
 ALTER TABLE events OWNER TO clowder;
 
+
+--
+-- Name: regions; Type: TABLE; Schema: public; Owner: clowder
+-- id is not integer, it's short name like 'su'.
+-- boundary & center_coordinate is not used currently
+--
+CREATE TABLE regions(
+      id varchar(10) PRIMARY KEY,
+      title varchar(50),
+      boundary geography,
+      center_coordinate geography
+);
+
+ALTER TABLE regions OWNER TO clowder;
+
+--
+-- Name: region_trends; Type: TABLE; Schema: public; Owner: clowder
+--
+
+CREATE TABLE region_trends(
+      region_id varchar(10) REFERENCES regions(id),
+      season varchar(8),
+      parameter varchar(200),
+      lastaverage float8,
+      tenyearsaverage float8,
+      totalaverage float8,
+      PRIMARY KEY (region_id, season, parameter)
+);
+
+ALTER TABLE region_trends OWNER TO clowder;
+
 --
 -- PostgreSQL database dump complete
 --

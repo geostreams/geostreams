@@ -1,7 +1,17 @@
 package controllers
 
+import javax.inject.{ Inject, Singleton }
+import akka.util.ByteString
+import utils.{ DatapointsHelper, JsonConvert, Parsers }
+import utils.silhouette._
 import com.mohiva.play.silhouette.api.Silhouette
-import db.{ Datapoints, Events, Users }
+import com.mohiva.play.silhouette.api.{ AuthenticatedEvent, LoginInfo, Silhouette }
+import play.api.mvc.{ Action, Controller }
+import play.api.{ Configuration, Logger }
+import db._
+import models.{ DatapointModel, RegionModel, User }
+import play.api.data._
+import play.api.db.Database
 import javax.inject.{ Inject, Singleton }
 import models.DatapointModel
 import org.joda.time.DateTime
@@ -24,7 +34,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  */
 @Singleton
 class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datapoints: Datapoints, userDB: Users,
-  eventsDB: Events, conf: Configuration)(implicit val messagesApi: MessagesApi)
+  eventsDB: Events, regionDB: RegionTrends, conf: Configuration)(implicit val messagesApi: MessagesApi)
     extends AuthTokenController with I18nSupport {
 
   /**
@@ -108,7 +118,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datap
       val raw = datapoints.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, false)
 
       val filtered = semi match {
-        case Some(season) => raw.filter(p => checkSeason(season, p.\("start_time").as[String]))
+        case Some(season) => raw.filter(p => DatapointsHelper.checkSeason(season, p.\("start_time").as[String]))
         case None => raw
       }
 
@@ -152,13 +162,25 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datap
     NotImplemented
   }
 
+  /**
+   * Get datapoint.
+   *
+   * @param id
+   */
+  def datapointGet(id: Int) = Action {
+    datapoints.getDatapoint(id) match {
+      case Some(datapoint) => Ok(Json.obj("status" -> "OK", "datapoint" -> datapoint))
+      case None => NotFound(Json.obj("message" -> "Datapoint not found."))
+    }
+  }
+
   def trendsByRegionDetail(attribute: String, geocode: String, season: String) = Action {
     // rawdata has 3 field: data, region, time.
-    val rawdata = datapoints.trendsByRegion(attribute, geocode)
+    val rawdata = regionDB.trendsByRegion(attribute, geocode, true)
     // for debug
     //print(rawdata.head)
     // group rawdata by date get Map[Some[Datetime], List(data, region, time)]
-    val rawdataGroupByTime = rawdata.filter(data => checkSeason(season, (data.\("time")).as[String]))
+    val rawdataGroupByTime = rawdata.filter(data => DatapointsHelper.checkSeason(season, (data.\("time")).as[String]))
       .groupBy(data => Parsers.parseDate(data.\("time")).getOrElse(new DateTime()).getYear())
     // refine rawdataGroupByTime by convert List(data, region, time) to List[Double], also remove data as NAN
     var dataGroupByTime: collection.mutable.Map[Int, List[Double]] = collection.mutable.Map()
@@ -178,80 +200,4 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datap
     Ok(Json.obj("status" -> "OK", "average" -> averagedata.toList, "deviation" -> deviationdata.toList))
   }
 
-  def trendsByRegion(attribute: String, geocode: String, season: String) = Action {
-    // rawdata has 3 field: data, region, time.
-    val rawdata = datapoints.trendsByRegion(attribute, geocode)
-
-    // for debug
-    //println(rawdata.head)
-    var lastDateString: String = new DateTime().withYear(1800).toString
-    val dataWithSeason = rawdata.filter { data =>
-      val tmpTime = (data.\("time")).as[String]
-      val matchSeason = checkSeason(season, tmpTime)
-      if (matchSeason) {
-        lastDateString = if (lastDateString > tmpTime) lastDateString else tmpTime
-      }
-      matchSeason
-    }
-    if (dataWithSeason.length > 0) {
-      // refine dataWithSeason by convert List(data, time) to List[Double], also remove data as NAN
-      var lastDate = new DateTime(lastDateString)
-      val lastYear = new DateTime(lastDate.getYear(), 1, 1, 1, 1)
-      val tenyearsago = lastYear.minusYears(9)
-      Logger.debug("trendsByRegion last date: " + lastDate)
-      Logger.debug("trendsByRegion last year: " + lastYear)
-      Logger.debug("trendsByRegion last 10 years: " + tenyearsago)
-
-      val dataWholeYear: List[Double] = dataWithSeason.map(d => Parsers.parseDouble(d.\("data"))).flatten
-      val dataTenYears: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time"))
-        .getOrElse(new DateTime()).isAfter(tenyearsago))
-        .map(d => Parsers.parseDouble(d.\("data"))).flatten
-      val dataLastYear: List[Double] = dataWithSeason.filter(d => Parsers.parseDate(d.\("time"))
-        .getOrElse(new DateTime()).isAfter(lastYear))
-        .map(d => Parsers.parseDouble(d.\("data"))).flatten
-
-      // create the result Jsobject
-      var trendsdata: JsObject = Json.obj(
-        "totalaverage" -> dataWholeYear.sum / dataWholeYear.length,
-        "tenyearsaverage" -> dataTenYears.sum / dataTenYears.length,
-        "lastaverage" -> dataLastYear.sum / dataLastYear.length
-      )
-
-      Ok(Json.obj("status" -> "OK", "trends" -> trendsdata))
-    } else {
-      Ok(Json.obj("status" -> "OK", "trends" -> "no data"))
-    }
-
-  }
-
-  // check the date is the in the specified season
-  private def checkSeason(season: String, date: String): Boolean = {
-    val month = date.slice(5, 7)
-    season match {
-      case "spring" | "Spring" => month == "03" || month == "04" || month == "05"
-      case "summer" | "Summer" => month == "06" || month == "07" || month == "08"
-      case _ => false
-    }
-  }
-
-  private def checkSeason(season: String, date: DateTime): Boolean = {
-    val month = date.getMonthOfYear()
-    season match {
-      case "spring" | "Spring" => month == 3 || month == 4 || month == 5
-      case "summer" | "Summer" => month == 6 || month == 7 || month == 8
-      case _ => false
-    }
-  }
-
-  /**
-   * Get datapoint.
-   *
-   * @param id
-   */
-  def datapointGet(id: Int) = Action {
-    datapoints.getDatapoint(id) match {
-      case Some(datapoint) => Ok(Json.obj("status" -> "OK", "datapoint" -> datapoint))
-      case None => NotFound(Json.obj("message" -> "Datapoint not found."))
-    }
-  }
 }

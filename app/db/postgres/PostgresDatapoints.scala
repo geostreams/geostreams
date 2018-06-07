@@ -244,48 +244,6 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
     }
   }
 
-  def trendsByRegion(attribute: String, geocode: String): List[JsValue] = {
-    db.withConnection { conn =>
-      var query = "SELECT to_json(t) As datapoint FROM (SELECT (datapoints.data ->> ?)::text AS data, " +
-        "to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS time FROM sensors, streams, " +
-        "datapoints WHERE sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid AND datapoints.data ?? ? "
-      query += " AND ST_Covers(ST_MakePolygon(ST_MakeLine(ARRAY["
-      val parts = geocode.split(",")
-      var j = 0
-      while (j < parts.length) {
-        query += "ST_MakePoint(?, ?), "
-        j += 2
-      }
-      query += "ST_MakePoint(?, ?)])), datapoints.geog)"
-
-      query += ") AS t; "
-      val st = conn.prepareStatement(query)
-
-      st.setString(1, attribute)
-      st.setString(2, attribute)
-      j = 0
-      while (j < parts.length) {
-        st.setDouble(j + 3, parts(j + 1).toDouble)
-        st.setDouble(j + 4, parts(j).toDouble)
-        j += 2
-      }
-      st.setDouble(j + 3, parts(1).toDouble)
-      st.setDouble(j + 4, parts(0).toDouble)
-      // for test
-      // println(st.toString)
-
-      val rs = st.executeQuery()
-      var filtereddata: ListBuffer[JsValue] = ListBuffer()
-      while (rs.next()) {
-        val data = rs.getString(1)
-        filtereddata += Json.parse(data)
-      }
-      rs.close()
-      st.close()
-      filtereddata.toList
-    }
-  }
-
   def deleteDatapoint(id: Int): Unit = {
     db.withConnection { conn =>
       val query = "DELETE FROM datapoints WHERE gid = ?"
