@@ -1,30 +1,21 @@
 package controllers
 
-import javax.inject.{ Inject, Singleton }
-import akka.util.ByteString
-import utils.{ DatapointsHelper, JsonConvert, Parsers }
-import utils.silhouette._
 import com.mohiva.play.silhouette.api.Silhouette
-import com.mohiva.play.silhouette.api.{ AuthenticatedEvent, LoginInfo, Silhouette }
-import play.api.mvc.{ Action, Controller }
-import play.api.{ Configuration, Logger }
 import db._
-import models.{ DatapointModel, RegionModel, User }
-import play.api.data._
-import play.api.db.Database
-import javax.inject.{ Inject, Singleton }
+import javax.inject.{Inject, Singleton}
 import models.DatapointModel
 import org.joda.time.DateTime
 import play.api.i18n._
-import play.api.libs.iteratee.{ Enumeratee, Enumerator }
+import play.api.libs.iteratee.{Enumeratee, Enumerator}
 import play.api.libs.json.Json._
 import play.api.libs.json._
 import play.api.mvc.Action
-import play.api.{ Configuration, Logger }
+import play.api.{Configuration, Logger}
 import play.filters.gzip.Gzip
+import utils.DatapointsHelper.timeBins
 import utils.silhouette._
-import utils.{ JsonConvert, Parsers }
-import views.html.{ auth => viewsAuth }
+import utils.{BinHelper, DatapointsHelper, JsonConvert, Parsers}
+import views.html.{auth => viewsAuth}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,7 +24,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * Datapoints contain the actual values together with a location and a time interval.
  */
 @Singleton
-class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datapoints: Datapoints, userDB: Users,
+class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB: Sensors, datapointDB: Datapoints, userDB: Users,
   eventsDB: Events, regionDB: RegionTrends, conf: Configuration)(implicit val messagesApi: MessagesApi)
     extends AuthTokenController with I18nSupport {
 
@@ -274,7 +265,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datap
    * @param id
    */
   def datapointGet(id: Int) = Action {
-    datapoints.getDatapoint(id) match {
+    datapointDB.getDatapoint(id) match {
       case Some(datapoint) => Ok(Json.obj("status" -> "OK", "datapoint" -> datapoint))
       case None => NotFound(Json.obj("message" -> "Datapoint not found."))
     }
@@ -283,7 +274,6 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datap
   def trendsByRegionDetail(attribute: String, geocode: String, season: String) = Action {
     // rawdata has 3 field: data, region, time.
     val rawdata = regionDB.trendsByRegion(attribute, geocode, true)
-    val rawdata = datapointDB.trendsByRegion(attribute, geocode)
     // for debug
     //print(rawdata.head)
     // group rawdata by date get Map[Some[Datetime], List(data, region, time)]

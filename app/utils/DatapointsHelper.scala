@@ -1,6 +1,9 @@
 package utils
 
-import org.joda.time.DateTime
+import org.joda.time.format.{ DateTimeFormat, ISODateTimeFormat }
+import org.joda.time.{ DateTime, IllegalInstantException }
+import play.api.Logger
+import play.api.libs.json._
 
 object DatapointsHelper {
   // check the date is the in the specified season, time format like: 2017-06-15T18:30:50Z
@@ -21,13 +24,7 @@ object DatapointsHelper {
       case _ => false
     }
   }
-}
-import org.joda.time.format.{ DateTimeFormat, ISODateTimeFormat }
-import org.joda.time.{ DateTime, IllegalInstantException }
-import play.api.Logger
-import play.api.libs.json._
 
-object DatapointsHelper {
   def timeBins(time: String, startTime: DateTime, endTime: DateTime): Map[String, JsObject] = {
     val iso = ISODateTimeFormat.dateTime()
     val result = collection.mutable.HashMap.empty[String, JsObject]

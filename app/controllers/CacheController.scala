@@ -1,13 +1,15 @@
 package controllers
 
+import java.text.DateFormatSymbols
+
 import com.mohiva.play.silhouette.api.Silhouette
 import db._
 import javax.inject.{ Inject, Singleton }
-import models.RegionModel
+import models.{ RegionModel, SensorModel }
 import org.joda.time.DateTime
 import play.api.{ Configuration, Logger }
 import play.api.i18n.{ I18nSupport, MessagesApi }
-import play.api.libs.json.{ JsError, JsObject, Json }
+import play.api.libs.json.{ JsError, JsObject, JsValue, Json }
 import play.api.mvc.{ Action, Controller }
 import utils.Parsers
 import utils.DatapointsHelper
@@ -19,10 +21,8 @@ import scala.collection.mutable.ListBuffer
  * Caches are kept to retrieve binned versions of the data (datatapoints) and trends.
  */
 @Singleton
-class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], datapointDB: Datapoints, regionDB: RegionTrends, conf: Configuration)(implicit val messagesApi: MessagesApi)
-    extends AuthTokenController with I18nSupport {
 class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB: Sensors, datapointDB: Datapoints,
-  cacheDB: Cache, conf: Configuration)(implicit val messagesApi: MessagesApi)
+  cacheDB: Cache, regionDB: RegionTrends, conf: Configuration)(implicit val messagesApi: MessagesApi)
     extends AuthTokenController with I18nSupport {
 
   /*
