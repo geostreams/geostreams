@@ -3,6 +3,8 @@
 # COMMON
 project.title=Project Title
 project.subtitle=Project Subtitle
+purpose = Reasons for Downloading
+purpose.subtitle = How do you intend to use this data
 
 field.firstname=First name
 field.lastname=Last name

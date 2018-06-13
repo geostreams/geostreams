@@ -2,7 +2,7 @@ package db.postgres
 
 import java.sql.{ Statement, Timestamp }
 import java.text.SimpleDateFormat
-
+import akka.actor.ActorSystem
 import db.{ Datapoints, Sensors }
 import javax.inject.Inject
 import models.DatapointModel
@@ -17,7 +17,7 @@ import scala.collection.mutable.ListBuffer
 /**
  * Store datapoints in Postgres.
  */
-class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Datapoints {
+class PostgresDatapoints @Inject() (db: Database, sensors: Sensors, actSys: ActorSystem) extends Datapoints {
   def addDatapoint(datapoint: DatapointModel): Int = {
     db.withConnection { conn =>
       val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
@@ -46,6 +46,7 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
       val id = rs.getInt(1)
       rs.close()
       ps.close()
+      // TODO: Update necessary bins
       id
     }
   }
@@ -84,6 +85,7 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
       ps.executeUpdate()
       val rs = ps.getUpdateCount
       ps.close()
+      // TODO: Update necessary bins
       rs
     }
   }
@@ -115,134 +117,8 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
     }
   }
 
-  def searchDatapointsByBin(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String], sensor_id: Option[String],
-    source: List[String], attributes: List[String], sortByStation: Boolean, time: String): List[JsObject] = {
-    db.withConnection { conn =>
-      val parts = geocode match {
-        case Some(x) => x.split(",")
-        case None => Array[String]()
-      }
-
-      var query_for_streams = "SELECT "
-
-      var query = "SELECT to_json(t) As datapoint FROM " +
-        "(SELECT datapoints.gid As id, to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') " +
-        "AS created, to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, " +
-        "to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, data As properties, " +
-        "'Feature' As type, ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, stream_id::text, sensor_id::text, " +
-        "sensors.name as sensor_name FROM sensors, streams, datapoints" +
-        " WHERE sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid"
-      if (since.isDefined) query += " AND datapoints.start_time >= ?"
-      if (until.isDefined) query += " AND datapoints.end_time <= ?"
-      if (parts.length == 3) {
-        query += " AND ST_DWithin(datapoints.geog, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)"
-      } else if ((parts.length >= 6) && (parts.length % 2 == 0)) {
-        query += " AND ST_Covers(ST_MakePolygon(ST_MakeLine(ARRAY["
-        var j = 0
-        while (j < parts.length) {
-          query += "ST_MakePoint(?, ?), "
-          j += 2
-        }
-        query += "ST_MakePoint(?, ?)])), datapoints.geog)"
-      }
-      // attributes
-      if (attributes.nonEmpty) {
-        //if a ":" is found, assume this is a filter, otherwise it's just a presence check
-        if (attributes(0).indexOf(":") > -1) {
-          query += " AND (datapoints.data @> ?::jsonb"
-        } else {
-          query += " AND (datapoints.data ?? ?"
-        }
-        for (x <- 1 until attributes.size)
-          if (attributes(x).indexOf(":") > -1) {
-            query += " OR (datapoints.data @> ?::jsonb)"
-          } else {
-            query += " OR (datapoints.data ?? ?)"
-          }
-        query += ")"
-      }
-      // data source
-      if (source.nonEmpty) {
-        query += " AND (? = json_extract_path_text(sensors.metadata,'type','id')"
-        for (x <- 1 until source.size)
-          query += " OR ? = json_extract_path_text(sensors.metadata,'type','id')"
-        query += ")"
-      }
-      //stream
-      if (stream_id.isDefined) query += " AND stream_id = ?"
-      //sensor
-      if (sensor_id.isDefined) query += " AND sensor_id = ?"
-      query += " order by "
-      if (sortByStation) {
-        query += "sensor_name, "
-      }
-      query += "start_time asc) As t;"
-      // Populate values ------
-      val st = conn.prepareStatement(query)
-      var i = 0
-      if (since.isDefined) {
-        i = i + 1
-        st.setTimestamp(i, new Timestamp(Parsers.parseDate(since.get).get.getMillis))
-      }
-      if (until.isDefined) {
-        i = i + 1
-        st.setTimestamp(i, new Timestamp(Parsers.parseDate(until.get).get.getMillis))
-      }
-      if (parts.length == 3) {
-        st.setDouble(i + 1, parts(1).toDouble)
-        st.setDouble(i + 2, parts(0).toDouble)
-        st.setDouble(i + 3, parts(2).toDouble * 1000)
-        i += 3
-      } else if ((parts.length >= 6) && (parts.length % 2 == 0)) {
-        var j = 0
-        while (j < parts.length) {
-          st.setDouble(i + 1, parts(j + 1).toDouble)
-          st.setDouble(i + 2, parts(j).toDouble)
-          i += 2
-          j += 2
-        }
-        st.setDouble(i + 1, parts(1).toDouble)
-        st.setDouble(i + 2, parts(0).toDouble)
-        i += 2
-      }
-      // attributes
-      if (attributes.nonEmpty) {
-        for (x <- 0 until attributes.size) {
-          i = i + 1
-          st.setString(i, attributes(x))
-        }
-      }
-      // sources
-      if (source.nonEmpty) {
-        for (x <- 0 until source.size) {
-          i = i + 1
-          st.setString(i, source(x))
-        }
-      }
-      // stream
-      if (stream_id.isDefined) {
-        i = i + 1
-        st.setInt(i, stream_id.get.toInt)
-      }
-      // sensor
-      if (sensor_id.isDefined) {
-        i = i + 1
-        st.setInt(i, sensor_id.get.toInt)
-      }
-      st.setFetchSize(50)
-      Logger.debug("Geostream search: " + st)
-      val rs = st.executeQuery()
-      val array = ListBuffer.empty[JsObject]
-      while (rs.next()) {
-        val datapoint = Json.parse(rs.getString(1)).as[JsObject]
-        array += datapoint
-      }
-      array.toList
-    }
-  }
-
-  def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String], sensor_id: Option[String],
-    source: List[String], attributes: List[String], sortByStation: Boolean): List[JsObject] = {
+  def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String],
+    sensor_id: Option[String], source: List[String], attributes: List[String], sortByStation: Boolean): List[JsObject] = {
     db.withConnection { conn =>
       val parts = geocode match {
         case Some(x) => x.split(",")
@@ -413,6 +289,7 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
       st.setInt(1, id)
       st.execute()
       st.close
+      // TODO: Update necessary bins
     }
   }
 

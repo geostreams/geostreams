@@ -70,13 +70,13 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
     if (time.equals("year")) {
       db.withConnection { conn =>
         val query = "SELECT row_to_json(t,true) AS my_bin FROM (SELECT extract(year from start_time) as yyyy, avg(cast(data ->> 'temperature' as double precision)) from datapoints where stream_id = " + stream_id +
-          "  group by yyyy ) AS t"
+          "  group by yyyy order by yyyy asc ) AS t"
 
         val st = conn.prepareStatement(query)
         // st.setInt(1, stream_id)
         Logger.debug("Streams get statement: " + st)
         val rs = st.executeQuery()
-        var bins: ListBuffer[JsValue] = ListBuffer()
+        // var bins: ListBuffer[JsValue] = ListBuffer()
         var streamData = ""
         while (rs.next()) {
           var current = rs;
@@ -96,7 +96,7 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
         // st.setInt(1, stream_id)
         Logger.debug("Streams get statement: " + st)
         val rs = st.executeQuery()
-        var bins: ListBuffer[JsValue] = ListBuffer()
+        // var bins: ListBuffer[JsValue] = ListBuffer()
         var streamData = ""
         while (rs.next()) {
           var current = rs;

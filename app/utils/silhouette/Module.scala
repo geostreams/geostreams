@@ -7,6 +7,7 @@ import com.mohiva.play.silhouette.api.crypto._
 import com.mohiva.play.silhouette.api.repositories.AuthInfoRepository
 import com.mohiva.play.silhouette.api.services._
 import com.mohiva.play.silhouette.api.util._
+import com.mohiva.play.silhouette.api.repositories.AuthenticatorRepository
 import com.mohiva.play.silhouette.api.{ Environment, EventBus, Silhouette, SilhouetteProvider }
 import com.mohiva.play.silhouette.crypto.{ JcaCookieSigner, JcaCookieSignerSettings, JcaCrypter, JcaCrypterSettings }
 import com.mohiva.play.silhouette.impl.authenticators._
@@ -23,6 +24,7 @@ import net.ceedubs.ficus.readers.ArbitraryTypeReader._
 import models.{ User, MailTokenUser }
 import utils.ErrorHandler
 import db.Users
+import utils.silhouette.DummyRepository
 
 /**
  * The Guice module which wires all Silhouette dependencies.
@@ -33,12 +35,12 @@ class Module extends AbstractModule with ScalaModule {
    * Configures the module.
    */
   def configure() {
-    bind[Silhouette[MyEnv]].to[SilhouetteProvider[MyEnv]]
+    bind[Silhouette[CookieEnv]].to[SilhouetteProvider[CookieEnv]]
+    bind[Silhouette[TokenEnv]].to[SilhouetteProvider[TokenEnv]]
     bind[SecuredErrorHandler].to[ErrorHandler]
     bind[UnsecuredErrorHandler].to[ErrorHandler]
     bind[IdentityService[User]].to[UserService]
     bind[MailTokenService[MailTokenUser]].to[MailTokenUserService]
-
     bind[IDGenerator].toInstance(new SecureRandomIDGenerator())
     bind[PasswordHasher].toInstance(new BCryptPasswordHasher())
     bind[FingerprintGenerator].toInstance(new DefaultFingerprintGenerator(false))
@@ -57,12 +59,12 @@ class Module extends AbstractModule with ScalaModule {
    * @return The Silhouette environment.
    */
   @Provides
-  def provideEnvironment(
+  def provideCookieEnvironment(
     userService: UserService,
     authenticatorService: AuthenticatorService[CookieAuthenticator],
     eventBus: EventBus
-  ): Environment[MyEnv] = {
-    Environment[MyEnv](
+  ): Environment[CookieEnv] = {
+    Environment[CookieEnv](
       userService,
       authenticatorService,
       Seq(),
@@ -80,6 +82,28 @@ class Module extends AbstractModule with ScalaModule {
   def provideAuthenticatorCookieSigner(configuration: Configuration): CookieSigner = {
     val config = configuration.underlying.as[JcaCookieSignerSettings]("silhouette.authenticator.cookie.signer")
     new JcaCookieSigner(config)
+  }
+
+  /**
+   * Provides the Silhouette environment.
+   *
+   * @param userService The user service implementation.
+   * @param authenticatorService The authentication service implementation.
+   * @param eventBus The event bus instance.
+   * @return The Silhouette environment.
+   */
+  @Provides
+  def provideTokenEnvironment(
+    userService: UserService,
+    authenticatorService: AuthenticatorService[BearerTokenAuthenticator],
+    eventBus: EventBus
+  ): Environment[TokenEnv] = {
+    Environment[TokenEnv](
+      userService,
+      authenticatorService,
+      Seq(),
+      eventBus
+    )
   }
 
   /**
@@ -117,7 +141,7 @@ class Module extends AbstractModule with ScalaModule {
    * @return The authenticator service.
    */
   @Provides
-  def provideAuthenticatorService(
+  def provideCookieAuthenticatorService(
     cookieSigner: CookieSigner,
     crypter: Crypter,
     fingerprintGenerator: FingerprintGenerator,
@@ -128,6 +152,30 @@ class Module extends AbstractModule with ScalaModule {
     val config = configuration.underlying.as[CookieAuthenticatorSettings]("silhouette.authenticator")
     val encoder = new CrypterAuthenticatorEncoder(crypter)
     new CookieAuthenticatorService(config, None, cookieSigner, encoder, fingerprintGenerator, idGenerator, clock)
+  }
+
+  /**
+   * Provides the authenticator service.
+   *
+   * @param cookieSigner The cookie signer implementation.
+   * @param crypter The crypter implementation.provideAuthenticatorService
+   * @param fingerprintGenerator The fingerprint generator implementation.
+   * @param idGenerator The ID generator implementation.
+   * @param configuration The Play configuration.
+   * @param clock The clock instance.
+   * @return The authenticator service.
+   */
+  @Provides
+  def provideTokenAuthenticatorService(
+    idGenerator: IDGenerator,
+    configuration: Configuration,
+    clock: Clock
+  ): AuthenticatorService[BearerTokenAuthenticator] = {
+
+    // no custom config at the moment - otherwise, read from configuration here
+    val config = BearerTokenAuthenticatorSettings()
+
+    new BearerTokenAuthenticatorService(config, DummyRepository, idGenerator, clock)
   }
 
   /**

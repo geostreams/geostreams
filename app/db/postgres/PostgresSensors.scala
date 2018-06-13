@@ -40,6 +40,25 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
     }
   }
 
+  def getSensorSources(id: Int, parameter: String): List[String] = {
+    db.withConnection { conn =>
+      val query = "SELECT distinct(datapoints.data->>'source') FROM datapoints, streams where " +
+        " datapoints.stream_id = streams.gid AND streams.sensor_id = ? AND datapoints.data ?? ?"
+      val st = conn.prepareStatement(query)
+      st.setInt(1, id)
+      st.setString(2, parameter)
+      val rs = st.executeQuery()
+      var sources: ListBuffer[String] = ListBuffer.empty[String]
+      while (rs.next()) {
+        val data = rs.getString(1)
+        sources += data
+      }
+      rs.close()
+      st.close()
+      sources.toList
+    }
+  }
+
   def getSensor(id: Int): Option[SensorModel] = {
     db.withConnection { conn =>
       // TODO store start time, end time and parameter list in the row and update them when the update sensor endpoint is called.
@@ -139,12 +158,6 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
   def getSensorStreams(id: Int): List[StreamModel] = {
     db.withConnection { conn =>
       var data = ""
-      //  val query = "SELECT * FROM streams WHERE sensor_id= " + id
-      //      val query = "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-      //        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
-      //        "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(end_time AT TIME " +
-      //        "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams WHERE sensor_id = " + id
-
       var query = "SELECT row_to_json(t,true) As my_places FROM " +
         "(SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
         "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +

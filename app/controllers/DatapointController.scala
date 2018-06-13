@@ -1,47 +1,33 @@
 package controllers
 
-import javax.inject.{ Inject, Singleton }
-import akka.util.ByteString
-import utils.{ BinHelper, JsonConvert, Parsers }
-import utils.silhouette._
 import com.mohiva.play.silhouette.api.Silhouette
-import com.mohiva.play.silhouette.api.{ AuthenticatedEvent, LoginInfo, Silhouette }
-import play.api.mvc.{ Action, Controller }
-import play.api.{ Configuration, Logger }
-import db.{ Datapoints, Events, Sensors, Users, Streams }
+import db.{ Datapoints, Events, Users, Sensors }
+import javax.inject.{ Inject, Singleton }
 import models.DatapointModel
-import models.User
-import play.api.data._
-import play.api.db.Database
+import org.joda.time.DateTime
 import play.api.i18n._
-import play.api.libs.functional.syntax._
-import play.api.mvc._
-import play.api.libs.json._
+import play.api.libs.iteratee.{ Enumeratee, Enumerator }
 import play.api.libs.json.Json._
+
+import play.api.libs.json._
+import play.api.mvc.Action
+import play.api.{ Configuration, Logger }
+import play.filters.gzip.Gzip
+import utils.silhouette._
+import utils.{ BinHelper, JsonConvert, Parsers }
+import utils.DatapointsHelper.timeBins
+import views.html.{ auth => viewsAuth }
 
 import scala.collection.mutable.ListBuffer
-import org.joda.time.{ DateTime, IllegalInstantException }
-import org.joda.time.format.{ DateTimeFormat, ISODateTimeFormat }
-import play.filters.gzip.Gzip
-import play.api.mvc._
-import play.api.libs.json._
-import play.api.libs.json.Json._
-import akka.stream._
-import akka.stream.scaladsl._
-import com.sun.xml.internal.ws.api.message.Header
-import play.api.libs.iteratee.{ Enumeratee, Enumerator }
-import utils.DatapointsHelper.timeBins
-
 import scala.concurrent.ExecutionContext.Implicits.global
-import views.html.{ auth => viewsAuth }
 
 /**
  * Datapoints contain the actual values together with a location and a time interval.
  */
 @Singleton
-class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB: Sensors, datapointDB: Datapoints, userDB: Users,
-  eventsDB: Events, streamDB: Streams, conf: Configuration)(implicit val messagesApi: MessagesApi)
-    extends AuthController with I18nSupport {
+class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], datapointDB: Datapoints, userDB: Users,
+  eventsDB: Events, sensorDB: Sensors, conf: Configuration)(implicit val messagesApi: MessagesApi)
+    extends AuthTokenController with I18nSupport {
 
   /**
    * add datapoint.
@@ -97,7 +83,6 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
       case None => NotFound(Json.obj("message" -> "Datapoint not found."))
 
     }
-
   }
 
   def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String]) = SecuredAction(WithService("master")) {
@@ -105,12 +90,24 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
     Ok(Json.obj("status" -> "OK"))
   }
 
-  def datapointSearch(operator: String, since: Option[String], until: Option[String], geocode: Option[String],
+  def datapointAverage(since: Option[String], until: Option[String], geocode: Option[String],
     stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
-    format: String, semi: Option[String], onlyCount: Boolean, purpose: Option[String]) = UserAwareAction { implicit request =>
-    //TODO: implement operator
+    format: String, semi: Option[String], onlyCount: Boolean) = Action {
+    NotImplemented
+  }
+
+  def datapointTrends(since: Option[String], until: Option[String], geocode: Option[String],
+    stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
+    format: String, semi: Option[String], onlyCount: Boolean) = Action {
+    NotImplemented
+  }
+
+  def datapointSearch(since: Option[String], until: Option[String], geocode: Option[String],
+    stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
+    format: String, semi: Option[String], onlyCount: Boolean) = UserAwareAction { implicit request =>
+
     try {
-      val raw = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, operator != "")
+      val raw = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, false)
 
       val filtered = semi match {
         case Some(season) => raw.filter(p => checkSeason(season, p.\("start_time").as[String]))
@@ -123,13 +120,14 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
       } else {
         request.identity match {
           case Some(user) => {
-            if (purpose.isDefined) {
-              eventsDB.save(user.asInstanceOf[User].id, request.queryString)
-            }
 
             if (format == "csv") {
               val toByteArray: Enumeratee[String, Array[Byte]] = Enumeratee.map[String] { s => s.getBytes }
-              Ok.chunked(JsonConvert.jsonToCSV(filtered) &> toByteArray &> Gzip.gzip())
+              val strings = raw.length match {
+                case 0 => Enumerator("no data")
+                case _ => JsonConvert.jsonToCSV(filtered)
+              }
+              Ok.chunked(strings &> toByteArray &> Gzip.gzip())
                 .withHeaders(
                   ("Content-Disposition", "attachment; filename=datapoints.csv"),
                   ("Content-Encoding", "gzip")
@@ -137,14 +135,10 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
                 .as(withCharset("text/csv"))
             } else {
               Ok(JsArray(filtered)).withHeaders("Content-Disposition" -> "attachment; filename=download.json")
-
             }
           }
           case None => {
-            val queryString: String =
-              routes.DatapointController.datapointDownload(since, until, geocode, sources, attributes, format).toString
-
-            Redirect(routes.Auth.signIn(Some(queryString)))
+            Forbidden(Json.obj("status" -> "KO", "message" -> "please provide a valid token"))
           }
         }
       }
@@ -154,30 +148,11 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
     }
   }
 
-  def datapointDownload(since: Option[String], until: Option[String], geocode: Option[String],
-    sources: List[String], attributes: List[String], format: String) = UserAwareAction { implicit request =>
-
-    request.identity match {
-      case Some(user) => {
-        val purpose = eventsDB.getLatestPurpose(user.id.getOrElse(0))
-        Ok(views.html.sensor.download(since, until, geocode, sources, attributes, format, purpose))
-      }
-      case None => {
-        val queryString: String =
-          routes.DatapointController.datapointDownload(since, until, geocode, sources, attributes, format).toString
-
-        Redirect(routes.Auth.signIn(Some(queryString)))
-      }
-    }
-  }
-
   def datapointsBin(time: String, depth: Double, keepRaw: Boolean, since: Option[String], until: Option[String],
     geocode: Option[String], stream_id: Option[String], sensor_id: Option[String], sources: List[String],
     attributes: List[String]) = Action {
     // what happened if sensor id is not given??
     // TODO list of special properties
-
-    // TODO - remove depth code,
 
     val groupBy = List("DEPTH_CODE")
     val addAll = List("source")
@@ -280,133 +255,6 @@ class DatapointController @Inject() (val silhouette: Silhouette[MyEnv], sensorDB
           (p._1, elements.toList.sortWith((x, y) => x.\("date").toString() < y.\("date").toString()))
         }
         Ok(Json.obj("status" -> "OK", "sensor_name" -> sensorObject.name, "properties" -> Json.toJson(result.toMap)))
-      }
-      case None => Ok(Json.obj("status" -> "no sensor"))
-    }
-  }
-
-  def datapointsBinUsingQuery(time: String, depth: Double, keepRaw: Boolean, since: Option[String], until: Option[String],
-    geocode: Option[String], stream_id: Option[String], sensor_id: Option[String], sources: List[String],
-    attributes: List[String]) = Action {
-    // what happened if sensor id is not given??
-    // TODO list of special properties
-
-    // TODO - remove depth code,
-
-    val groupBy = List("DEPTH_CODE")
-    val addAll = List("source")
-    val ignore = groupBy ++ addAll
-
-    sensorDB.getSensor(sensor_id.get.toInt) match {
-      case Some(sensorObject) => {
-
-        val streams_of_sensor = sensorDB.getSensorStreams(Integer.parseInt(sensor_id.get))
-
-        // TODO for each stream get the bin
-        val bins: ListBuffer[JsValue] = ListBuffer.empty[JsValue]
-        streams_of_sensor.map(stream => {
-          var current_bin = streamDB.getBinForStream(time, stream.id)
-          bins ++= current_bin
-        });
-
-        val raw = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, true)
-
-        // val raw_bin = datapointDB.searchDatapointsByBin(since, until, geocode, stream_id, sensor_id, sources, attributes, true, time)
-
-        // list of result
-        val properties = collection.mutable.HashMap.empty[String, collection.mutable.HashMap[String, BinHelper]]
-
-        raw.map(sensor => {
-          val depthCode = sensor.\("properties").\("DEPTH_CODE") match {
-            case x: JsUndefined => "NA"
-            case x => Parsers.parseString(x)
-          }
-          val extras = Json.obj("depth_code" -> depthCode)
-
-          // get source
-          val source = sensor.\("properties").\("source") match {
-            case x: JsUndefined => ""
-            case x => Parsers.parseString(x)
-          }
-
-          // get depth
-          val coordinates = sensor.\("geometry").\("coordinates").as[JsArray]
-          val depthBin = depth * Math.ceil(Parsers.parseDouble(coordinates(2)).getOrElse(0.0) / depth)
-
-          // bin time
-          val startTime = Parsers.parseDate(sensor.\("start_time")).getOrElse(DateTime.now)
-          val endTime = Parsers.parseDate(sensor.\("end_time")).getOrElse(DateTime.now)
-          val times = timeBins(time, startTime, endTime)
-
-          sensor.\("properties").as[JsObject].fieldSet.filter(p => !ignore.contains(p._1)).foreach(f => {
-            // add to list of properies
-            val prop = Parsers.parseString(f._1)
-            val propertyBin = properties.getOrElseUpdate(prop, collection.mutable.HashMap.empty[String, BinHelper])
-
-            // add value to all bins
-            times.foreach(t => {
-              val key = prop + t._1 + depthBin + depthCode
-
-              // add data object
-              val bin = propertyBin.getOrElseUpdate(key, BinHelper(depthBin, t._1, extras, t._2))
-
-              // add source to result
-              if (source != "") {
-                bin.sources += source
-              }
-
-              // add values to array
-              Parsers.parseDouble(f._2) match {
-                case Some(v) => bin.doubles += v
-                case None =>
-                  f._2 match {
-                    case JsObject(_) => {
-                      val s = Parsers.parseString(f._2)
-                      if (s != "") {
-                        bin.array += s
-                      }
-                    }
-
-                    case _ => {
-                      val s = Parsers.parseString(f._2)
-                      if (s != "") {
-                        bin.strings += s
-                      }
-                    }
-
-                  }
-              }
-            })
-          })
-        })
-
-        // combine results
-        // TODO breaks for depth 0.0
-        val result = properties.map { p =>
-          val elements = for (bin <- p._2.values if bin.doubles.length > 0 || bin.array.size > 0) yield {
-            val base = Json.obj("depth" -> bin.depth, "label" -> bin.label, "sources" -> bin.sources.toList)
-
-            val raw = if (keepRaw) {
-              Json.obj("doubles" -> bin.doubles.toList, "strings" -> bin.strings.toList)
-            } else {
-              Json.obj()
-            }
-
-            val dlen = bin.doubles.length
-            val average = if (dlen > 0) {
-              Json.obj("average" -> toJson(bin.doubles.sum / dlen), "count" -> dlen)
-            } else {
-              Json.obj("array" -> bin.array.toList, "count" -> bin.array.size)
-            }
-
-            // return object combining all pieces
-            base ++ bin.timeInfo ++ bin.extras ++ raw ++ average
-          }
-          // add data back to result, sorted by date.
-          (p._1, elements.toList.sortWith((x, y) => x.\("date").toString() < y.\("date").toString()))
-        }
-        // Ok(Json.obj("status" -> "OK", "sensor_name" -> sensorObject.name, "properties" -> Json.toJson(result.toMap)))
-        Ok(Json.obj("status" -> "OK", "sensor_name" -> sensorObject.name, "bins" -> Json.toJson(bins)))
       }
       case None => Ok(Json.obj("status" -> "no sensor"))
     }

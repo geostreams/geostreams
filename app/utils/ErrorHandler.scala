@@ -10,6 +10,7 @@ import play.api.routing.Router
 import scala.concurrent.Future
 import javax.inject.{ Singleton, Inject, Provider }
 import controllers.routes
+import play.api.Logger
 
 @Singleton
 class ErrorHandler @Inject() (

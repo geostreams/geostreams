@@ -34,7 +34,7 @@ import views.html.{ auth => viewsAuth }
 
 @Singleton
 class Auth @Inject() (
-    val silhouette: Silhouette[MyEnv],
+    val silhouette: Silhouette[CookieEnv],
     val messagesApi: MessagesApi,
     userService: UserService,
     authInfoRepository: AuthInfoRepository,
@@ -45,7 +45,7 @@ class Auth @Inject() (
     conf: Configuration,
     clock: Clock,
     usersDB: Users
-) extends AuthController {
+) extends AuthCookieController {
 
   // UTILITIES
 

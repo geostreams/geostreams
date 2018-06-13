@@ -1,20 +1,16 @@
 package controllers
 
-import java.sql.Statement
-import javax.inject._
-
+import com.mohiva.play.silhouette.api.Silhouette
 import db.Sensors
-import models.{ GeometryModel, SensorModel }
+import javax.inject._
+import models.SensorModel
 import play.api.data.Forms._
 import play.api.data._
-import play.api.db.Database
 import play.api.i18n._
-import play.api.libs.functional.syntax._
-import play.api.mvc._
-import play.api.libs.json._
 import play.api.libs.json.Json._
+import play.api.libs.json._
+import play.api.mvc._
 import utils.silhouette._
-import com.mohiva.play.silhouette.api.Silhouette
 
 case class SensorData(name: String, age: Int)
 
@@ -22,8 +18,8 @@ case class SensorData(name: String, age: Int)
  * Sensors or locations are the topmost data structure in the data model. Sensors contain streams and streams contain
  * datapoints.
  */
-class SensorController @Inject() (val silhouette: Silhouette[MyEnv], sensors: Sensors)(implicit val messagesApi: MessagesApi)
-    extends AuthController with I18nSupport {
+class SensorController @Inject() (val silhouette: Silhouette[TokenEnv], sensors: Sensors)(implicit val messagesApi: MessagesApi)
+    extends AuthTokenController with I18nSupport {
 
   val sensorForm = Form(
     mapping(
