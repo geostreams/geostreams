@@ -58,15 +58,22 @@ GET           /api/datapoints/trends                                    controll
 GET           /api/datapoints/bin/:time/:depth                          controllers.DatapointController.datapointsBin(time, depth: Double, raw: Boolean ?= false, since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty)
 GET           /api/datapoints/:id                                       controllers.DatapointController.datapointGet(id: Int)
 GET           /api/datapoints                                           controllers.DatapointController.datapointSearch(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
+GET           /api/trends/region/:attribute                             controllers.DatapointController.trendsByRegion(attribute: String, geocode: String, season: String ?= "spring")
+GET           /api/datapoints                                           controllers.DatapointController.datapointSearch(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/trends/region/detail/:attribute                      controllers.DatapointController.trendsByRegionDetail(attribute: String, geocode: String, season: String ?= "spring")
 
 POST          /api/trends/region                                        controllers.CacheController.calculateTrendsByRegion()
 GET           /api/trends/region/:attribute                             controllers.CacheController.regionTrends(attribute: String, season: String ?= "spring")
 
 # Cache
-GET           /api/cache                                                controllers.CacheController.cacheListAction
-GET           /api/cache/invalidate                                     controllers.CacheController.cacheInvalidateAction(sensor_id: Option[String] ?= None, stream_id: Option[String] ?= None)
-GET           /api/cache/:id                                            controllers.CacheController.cacheFetchAction(id)
+POST          /api/cache                                                controllers.CacheController.createOrUpdateBins(sensor_id: Option[Int] ?= None, year: Option[Int], month: Option[Int], day: Option[Int], hour: Option[Int], parameter: Option[String] ?= None, restrict: Boolean ?= true)
+GET           /api/cache/year/:sensor_id                                controllers.CacheController.getCachedBinStatsYear(sensor_id: Int, year: Option[Int] ?= None, updateBins : Boolean ?= true, parameter: Option[String] ?= None)
+GET           /api/cache/month/:sensor_id                               controllers.CacheController.getCachedBinStatsMonth(sensor_id: Int, year: Option[Int], month: Option[Int], updateBins: Boolean ?= true, parameter: Option[String] ?= None)
+GET           /api/cache/day/:sensor_id                                 controllers.CacheController.getCachedBinStatsDay(sensor_id: Int, year: Option[Int], month: Option[Int], day: Option[Int], updateBins: Boolean ?= true, parameter: Option[String] ?= None)
+GET           /api/cache/hour/:sensor_id                                controllers.CacheController.getCachedBinStatsHour(sensor_id: Int, year: Option[Int], month: Option[Int], day: Option[Int], hour: Option[Int], updateBins: Boolean ?= true, parameter: Option[String] ?= None)
+GET           /api/cache/season/:sensor_id                              controllers.CacheController.getCachedBinStatsSeason(sensor_id: Int, updateBins: Boolean ?= true, parameter: Option[String] ?= None)
+GET           /api/cache/trends/year/:sensor_id                         controllers.CacheController.getTrendsForParameterYear(sensor_id: Int, parameter: Option[String])
+GET           /api/cache/trends/month/:sensor_id                        controllers.CacheController.getTrendsForParameterMonth(sensor_id: Int, parameter: Option[String])
 
 # Admin
 DELETE        /api/dropall                                              controllers.AdminController.deleteAll

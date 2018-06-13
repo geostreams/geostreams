@@ -1,16 +1,17 @@
 package db.postgres
 
 import java.sql.{ SQLException, Statement }
+
 import javax.inject.Inject
 import play.api.Logger
 import play.api.libs.json.{ JsObject, JsValue, Json, __ }
 import play.api.db.Database
 import play.api.libs.json._
 import play.api.libs.json.Json._
-import scala.collection.mutable.ListBuffer
 
+import scala.collection.mutable.ListBuffer
 import db.Sensors
-import models.SensorModel
+import models.{ SensorModel, StreamModel }
 import models.SensorModel._
 
 /**
@@ -36,6 +37,25 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
       rs.close()
       ps.close()
       id
+    }
+  }
+
+  def getSensorSources(id: Int, parameter: String): List[String] = {
+    db.withConnection { conn =>
+      val query = "SELECT distinct(datapoints.data->>'source') FROM datapoints, streams where " +
+        " datapoints.stream_id = streams.gid AND streams.sensor_id = ? AND datapoints.data ?? ?"
+      val st = conn.prepareStatement(query)
+      st.setInt(1, id)
+      st.setString(2, parameter)
+      val rs = st.executeQuery()
+      var sources: ListBuffer[String] = ListBuffer.empty[String]
+      while (rs.next()) {
+        val data = rs.getString(1)
+        sources += data
+      }
+      rs.close()
+      st.close()
+      sources.toList
     }
   }
 
@@ -135,21 +155,39 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
     }
   }
 
-  def getSensorStreams(id: Int): JsValue = {
+  def getSensorStreams(id: Int): List[StreamModel] = {
     db.withConnection { conn =>
       var data = ""
-      val query = "SELECT array_to_json(array_agg(t),true) As my_places FROM " +
-        "(SELECT streams.gid As stream_id, streams.name As name FROM streams WHERE sensor_id=?) As t;"
+      var query = "SELECT row_to_json(t,true) As my_places FROM " +
+        "(SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
+        "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(end_time AT TIME " +
+        "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams"
+      query += " WHERE sensor_id = " + id + " ) As t"
       val st = conn.prepareStatement(query)
-      st.setInt(1, id.toInt)
+      //st.setInt(1, id.toInt)
       Logger.debug("Get streams by sensor statement: " + st)
       val rs = st.executeQuery()
+      var streams: ListBuffer[JsValue] = ListBuffer()
+      var stream_objects: ListBuffer[StreamModel] = ListBuffer()
       while (rs.next()) {
+        val current = rs.getString(1)
+        var current_data = current
+        streams += Json.parse(current_data)
+        try {
+          stream_objects += Json.parse(current_data).as[StreamModel]
+        } catch {
+          case e: Exception => {
+            print(e.toString)
+          }
+        }
         data += rs.getString(1)
       }
       rs.close()
       st.close()
-      Json.parse(data)
+      var asJson = Json.parse(data)
+
+      stream_objects.toList
     }
   }
 

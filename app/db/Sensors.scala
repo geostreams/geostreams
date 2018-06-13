@@ -2,7 +2,7 @@ package db
 
 import com.google.inject.ImplementedBy
 import db.postgres.PostgresSensors
-import models.SensorModel
+import models.{ SensorModel, StreamModel }
 import play.api.libs.json.{ JsObject, JsValue }
 
 /**
@@ -12,9 +12,10 @@ import play.api.libs.json.{ JsObject, JsValue }
 trait Sensors {
   def createSensor(sensor: SensorModel): Int
   def getSensor(id: Int): Option[SensorModel]
+  def getSensorSources(id: Int, parameter: String): List[String]
   def updateSensorMetadata(id: Int, update: JsObject): JsValue
   def getSensorStats(id: Int): JsValue
-  def getSensorStreams(id: Int): JsValue
+  def getSensorStreams(id: Int): List[StreamModel]
   def updateSensorStats(id: Option[Int]): Unit
   def searchSensors(geocode: Option[String], sensor_name: Option[String]): List[SensorModel]
   def deleteSensor(id: Int): Unit

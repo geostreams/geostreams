@@ -155,6 +155,92 @@ ALTER TABLE streams_gid_seq OWNER TO clowder;
 ALTER SEQUENCE streams_gid_seq OWNED BY streams.gid;
 
 
+-- Name: bins_year; Type: TABLE; Schema: public; Owner: clowder
+--
+
+CREATE TABLE bins_year (
+  sensor_id integer NOT NULL,
+  yyyy integer,
+  parameter character varying(255),
+  count integer,
+  sum float8,
+  average float8,
+  start_time timestamp with time zone,
+  end_time timestamp with time zone,
+  updated timestamp with time zone,
+  PRIMARY KEY (sensor_id, yyyy, parameter)
+);
+
+
+ALTER TABLE bins_year OWNER TO clowder;
+
+
+-- Name: bins_month; Type: TABLE; Schema: public; Owner: clowder
+--
+
+CREATE TABLE bins_month (
+  sensor_id integer NOT NULL,
+  yyyy integer,
+  mm integer,
+  parameter character varying(255),
+  count integer,
+  sum float8,
+  average float8,
+  start_time timestamp with time zone,
+  end_time timestamp with time zone,
+  updated timestamp with time zone,
+  PRIMARY KEY (sensor_id, yyyy, mm, parameter)
+);
+
+
+ALTER TABLE bins_month OWNER TO clowder;
+
+
+-- Name: bins_hour; Type: TABLE; Schema: public; Owner: clowder
+--
+
+CREATE TABLE bins_day (
+  sensor_id integer NOT NULL,
+  yyyy integer,
+  mm integer,
+  dd integer,
+  parameter character varying(255),
+  count integer,
+  sum float8,
+  average float8,
+  start_time timestamp with time zone,
+  end_time timestamp with time zone,
+  updated timestamp with time zone,
+  PRIMARY KEY (sensor_id, yyyy, mm, dd, parameter)
+);
+
+
+ALTER TABLE bins_day OWNER TO clowder;
+
+
+-- Name: bins_hour; Type: TABLE; Schema: public; Owner: clowder
+--
+
+CREATE TABLE bins_hour (
+  sensor_id integer NOT NULL,
+  yyyy integer,
+  mm integer,
+  dd integer,
+  hh integer,
+  parameter character varying(255),
+  count integer,
+  sum float8,
+  average float8,
+  start_time timestamp with time zone,
+  end_time timestamp with time zone,
+  updated timestamp with time zone,
+  PRIMARY KEY (sensor_id, yyyy, mm, dd, hh, parameter)
+);
+
+
+ALTER TABLE bins_month OWNER TO clowder;
+
+
 --
 -- Name: gid; Type: DEFAULT; Schema: public; Owner: clowder
 --
@@ -233,6 +319,13 @@ CREATE INDEX sensors_gix ON sensors USING gist (geog);
 --
 
 CREATE INDEX streams_gix ON streams USING gist (geog);
+
+
+--
+-- Name: streams_sensor_id; Type: INDEX; Schema: public; Owner: clowder
+--
+
+CREATE INDEX streams_sensor_id ON streams USING btree (sensor_id);
 
 
 --
@@ -333,6 +426,19 @@ CREATE TABLE events (
 );
 
 ALTER TABLE events OWNER TO clowder;
+
+
+create or replace function cast_to_double(text) returns DOUBLE PRECISION as $$
+begin
+  -- Note the double casting to avoid infinite recursion.
+  return cast($1::varchar as DOUBLE PRECISION);
+  exception
+  when invalid_text_representation then
+    return 0.0;
+end;
+$$ language plpgsql immutable;
+create cast (text as DOUBLE PRECISION) with function cast_to_double(text);
+
 
 
 --

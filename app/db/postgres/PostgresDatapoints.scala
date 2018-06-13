@@ -1,29 +1,23 @@
 package db.postgres
 
-import java.sql.{ SQLException, Statement }
-import javax.inject.Inject
-import play.api.Logger
-import utils.Parsers
-import scala.collection.mutable.ListBuffer
-
-import db.{ Datapoints, Sensors }
-import models.DatapointModel
-import play.api.libs.json.{ JsObject, JsValue, Json, __ }
-import play.api.db.Database
-import models.DatapointModel._
+import java.sql.{ Statement, Timestamp }
 import java.text.SimpleDateFormat
-import java.sql.Timestamp
+import akka.actor.ActorSystem
+import db.{ Datapoints, Sensors }
+import javax.inject.Inject
+import models.DatapointModel
+import models.DatapointModel._
+import play.api.Logger
+import play.api.db.Database
+import play.api.libs.json.{ JsObject, JsValue, Json, _ }
+import utils.Parsers
 
 import scala.collection.mutable.ListBuffer
-import play.api.libs.json.{ JsObject, JsValue, Json, __ }
-import play.api.db.Database
-import play.api.libs.json._
-import play.api.libs.json.Json._
 
 /**
  * Store datapoints in Postgres.
  */
-class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Datapoints {
+class PostgresDatapoints @Inject() (db: Database, sensors: Sensors, actSys: ActorSystem) extends Datapoints {
   def addDatapoint(datapoint: DatapointModel): Int = {
     db.withConnection { conn =>
       val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
@@ -52,6 +46,7 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
       val id = rs.getInt(1)
       rs.close()
       ps.close()
+      // TODO: Update necessary bins
       id
     }
   }
@@ -90,6 +85,7 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
       ps.executeUpdate()
       val rs = ps.getUpdateCount
       ps.close()
+      // TODO: Update necessary bins
       rs
     }
   }
@@ -251,6 +247,7 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors) extends Data
       st.setInt(1, id)
       st.execute()
       st.close
+      // TODO: Update necessary bins
     }
   }
 

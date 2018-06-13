@@ -1,5 +1,7 @@
 package db
 
+import java.sql.Timestamp
+
 import com.google.inject.ImplementedBy
 import db.postgres.PostgresDatapoints
 import models.DatapointModel
