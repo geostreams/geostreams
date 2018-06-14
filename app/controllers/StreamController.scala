@@ -31,7 +31,7 @@ class StreamController @Inject() (val silhouette: Silhouette[TokenEnv], db: Data
       },
       stream => {
         val id = streams.createStream(stream)
-        Ok(Json.obj("status" -> "ok", "id" -> id))
+        Ok(Json.obj("status" -> "OK", "id" -> id))
       }
     )
   }
@@ -55,7 +55,7 @@ class StreamController @Inject() (val silhouette: Silhouette[TokenEnv], db: Data
    */
   def streamGet(id: Int) = SecuredAction(WithService("master")) {
     streams.getStream(id) match {
-      case Some(stream) => Ok(Json.obj("status" -> "ok", "stream" -> stream))
+      case Some(stream) => Ok(Json.obj("status" -> "OK", "stream" -> stream))
       case None => NotFound(Json.obj("message" -> "Stream not found."))
     }
 
@@ -114,7 +114,7 @@ class StreamController @Inject() (val silhouette: Silhouette[TokenEnv], db: Data
    */
   def streamsSearch(geocode: Option[String], stream_name: Option[String]) = Action {
     val searchStreams = streams.searchStreams(geocode, stream_name)
-    Ok(Json.obj("status" -> "ok", "streams" -> searchStreams))
+    Ok(Json.obj("status" -> "OK", "streams" -> searchStreams))
   }
 
   /**
@@ -126,7 +126,7 @@ class StreamController @Inject() (val silhouette: Silhouette[TokenEnv], db: Data
     streams.getStream(id) match {
       case Some(stream) => {
         streams.deleteStream(stream.id)
-        Ok(Json.obj("status" -> "ok"))
+        Ok(Json.obj("status" -> "OK"))
       }
       case None => NotFound(Json.obj("message" -> "Stream not found."))
     }

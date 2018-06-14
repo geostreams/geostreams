@@ -471,6 +471,57 @@ CREATE TABLE region_trends(
 
 ALTER TABLE region_trends OWNER TO clowder;
 
+create table parameters
+(
+    gid integer default nextval('geoindex_gid_seq' :: regclass) not null
+    constraint parameters_pkey
+    primary key,
+    name         varchar(50) not null,
+    title        varchar(100),
+    unit         varchar(20),
+    search_view  boolean default true,
+    explore_view boolean default true,
+    scale_names  varchar(250),
+    scale_colors varchar(100)
+);
+
+create unique index parameters_gid_uindex
+  on parameters (gid);
+
+create unique index parameters_name_uindex
+  on parameters (name);
+
+ALTER TABLE parameters OWNER TO clowder;
+
+create table categories
+(
+    gid integer default nextval('geoindex_gid_seq' :: regclass) not null
+    constraint categories_pkey
+    primary key,
+    name varchar(50),
+    detail_type varchar(50)
+);
+
+create unique index categories_id_uindex
+  on categories (id);
+
+ALTER TABLE categories OWNER TO clowder;
+
+create table parameter_categories
+(
+    gid integer default nextval('geoindex_gid_seq' :: regclass) not null
+    constraint parameter_categories_pkey
+    primary key,
+    parameter_gid integer not null
+    constraint parameter_fk
+    references parameters,
+    category_gid  integer not null
+    constraint categories_fk
+    references categories
+);
+
+ALTER TABLE parameter_categories OWNER TO clowder;
+
 --
 -- PostgreSQL database dump complete
 --

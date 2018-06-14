@@ -44,7 +44,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], senso
       },
       datapoint => {
         val id = datapointDB.addDatapoint(datapoint)
-        Ok(Json.obj("status" -> "ok", "id" -> id))
+        Ok(Json.obj("status" -> "OK", "id" -> id))
       }
     )
   }
@@ -63,7 +63,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], senso
       },
       datapointlist => {
         val datapintCount = datapointDB.addDatapoints(datapointlist)
-        Ok(Json.obj("status" -> "ok", "count" -> datapintCount))
+        Ok(Json.obj("status" -> "OK", "count" -> datapintCount))
       }
     )
   }

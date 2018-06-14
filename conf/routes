@@ -64,6 +64,12 @@ GET           /api/trends/region/detail/:attribute                      controll
 POST          /api/trends/region                                        controllers.CacheController.calculateTrendsByRegion()
 GET           /api/trends/region/:attribute                             controllers.CacheController.regionTrends(attribute: String, season: String ?= "spring")
 
+# Parameters
+GET           /api/parameters                                           controllers.ParameterController.getParameters
+POST          /api/parameters                                           controllers.ParameterController.addParameter
+DELETE        /api/parameters/name/:name                                controllers.ParameterController.deleteParameterByName(name: String)
+DELETE        /api/parameters/:id                                       controllers.ParameterController.deleteParameter(id: Int)
+
 # Cache
 POST          /api/cache                                                controllers.CacheController.createOrUpdateBins(sensor_id: Option[Int] ?= None, year: Option[Int], month: Option[Int], day: Option[Int], hour: Option[Int], parameter: Option[String] ?= None, restrict: Boolean ?= true)
 GET           /api/cache/year/:sensor_id                                controllers.CacheController.getCachedBinStatsYear(sensor_id: Int, year: Option[Int] ?= None, updateBins : Boolean ?= true, parameter: Option[String] ?= None)

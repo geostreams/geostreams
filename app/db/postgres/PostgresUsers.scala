@@ -67,7 +67,7 @@ class PostgresUsers @Inject() (db: Database) extends Users {
         query = "INSERT INTO users(email, emailConfirmed,  password, first_name, last_name, organization, services) " +
           "VALUES(?, ?, ?, ?, ?, ?, ?) "
       }
-      val st = conn.prepareStatement(query)
+      val st = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)
       st.setString(1, user.email)
       st.setBoolean(2, user.emailconfirmed)
       st.setString(3, user.password)

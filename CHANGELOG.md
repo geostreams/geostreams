@@ -14,11 +14,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [GEOD-1017](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1017)
 - Adding Banner
   [GEOD-1059](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1059)  
-- Add sensor id is not in the download URL
+- Add sensor id to download URL. Adding support for download button in detail page
   [GEOD-1101](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1101)
 - Save trends region to DB 
   [GEOD-1087](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1087)  
-
+- Added parameter controller, model, sql creation script, postgres scripts for creating, updating, deleting and getting parameters.
+  [GEOD_895](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-895)
+ 
  
 ### Changed
 - Changed header and email title

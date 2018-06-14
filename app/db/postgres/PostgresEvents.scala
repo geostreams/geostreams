@@ -19,7 +19,7 @@ class PostgresEvents @Inject() (db: Database) extends Events {
         var query = "INSERT INTO events(userid, sources, attributes, geocode, since, until, purpose, downloaddate) " +
           "VALUES(?, ?, ?, ?, ?, ?, ?, now())"
 
-        val st = conn.prepareStatement(query)
+        val st = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)
         st.setInt(1, userid.get)
         st.setString(2, request.get("sources").map(_.mkString(", ")).getOrElse("--"))
         st.setString(3, request.get("attributes").map(_.mkString(", ")).getOrElse("--"))
