@@ -6,6 +6,24 @@ import play.api.Logger
 import play.api.libs.json._
 
 object DatapointsHelper {
+
+  // Parse start and end strings into component parts
+  def parseTimeRange(start_time: String, end_time: String): (Int, Int, Int, Int, Int, Int, Int, Int) = {
+    val start_dt = new DateTime(start_time)
+    val end_dt = new DateTime(end_time)
+
+    (
+      start_dt.getYear(),
+      end_dt.getYear(),
+      start_dt.getMonthOfYear(),
+      end_dt.getMonthOfYear(),
+      start_dt.getDayOfMonth(),
+      end_dt.getDayOfMonth(),
+      start_dt.getHourOfDay(),
+      end_dt.getHourOfDay()
+    )
+  }
+
   // check the date is the in the specified season, time format like: 2017-06-15T18:30:50Z
   def checkSeason(season: String, date: String): Boolean = {
     val month = date.slice(5, 7)

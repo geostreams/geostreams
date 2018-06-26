@@ -5,8 +5,8 @@ import db.postgres.PostgresParameters
 import models.{ CategoryModel, CategoryParameterMapping, ParameterModel }
 
 /**
-  * Access Parameter Store. Implementations are in /db/postgres/PostgresParameters
-  */
+ * Access Parameter Store. Implementations are in /db/postgres/PostgresParameters
+ */
 @ImplementedBy(classOf[PostgresParameters])
 trait Parameters {
 

@@ -28,7 +28,7 @@ class ParameterController @Inject() (val silhouette: Silhouette[TokenEnv], val m
 
   /**
    * Deletes a parameter and mappings for that parameter given an id.
-    *
+   *
    * @param id
    * @return
    */

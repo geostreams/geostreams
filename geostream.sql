@@ -162,7 +162,7 @@ CREATE TABLE bins_year (
   sensor_id integer NOT NULL,
   yyyy integer,
   parameter character varying(255),
-  count integer,
+  datapoint_count integer,
   sum float8,
   average float8,
   start_time timestamp with time zone,
@@ -183,7 +183,7 @@ CREATE TABLE bins_month (
   yyyy integer,
   mm integer,
   parameter character varying(255),
-  count integer,
+  datapoint_count integer,
   sum float8,
   average float8,
   start_time timestamp with time zone,
@@ -205,7 +205,7 @@ CREATE TABLE bins_day (
   mm integer,
   dd integer,
   parameter character varying(255),
-  count integer,
+  datapoint_count integer,
   sum float8,
   average float8,
   start_time timestamp with time zone,
@@ -228,7 +228,7 @@ CREATE TABLE bins_hour (
   dd integer,
   hh integer,
   parameter character varying(255),
-  count integer,
+  datapoint_count integer,
   sum float8,
   average float8,
   start_time timestamp with time zone,
@@ -238,7 +238,7 @@ CREATE TABLE bins_hour (
 );
 
 
-ALTER TABLE bins_month OWNER TO clowder;
+ALTER TABLE bins_hour OWNER TO clowder;
 
 
 --
@@ -471,7 +471,7 @@ CREATE TABLE region_trends(
 
 ALTER TABLE region_trends OWNER TO clowder;
 
-create table parameters
+CREATE TABLE parameters
 (
     gid integer default nextval('geoindex_gid_seq' :: regclass) not null
     constraint parameters_pkey
@@ -485,15 +485,15 @@ create table parameters
     scale_colors varchar(100)
 );
 
-create unique index parameters_gid_uindex
+CREATE UNIQUE index parameters_gid_uindex
   on parameters (gid);
 
-create unique index parameters_name_uindex
+CREATE UNIQUE index parameters_name_uindex
   on parameters (name);
 
 ALTER TABLE parameters OWNER TO clowder;
 
-create table categories
+CREATE TABLE categories
 (
     gid integer default nextval('geoindex_gid_seq' :: regclass) not null
     constraint categories_pkey
@@ -502,12 +502,12 @@ create table categories
     detail_type varchar(50)
 );
 
-create unique index categories_id_uindex
+CREATE UNIQUE index categories_id_uindex
   on categories (id);
 
 ALTER TABLE categories OWNER TO clowder;
 
-create table parameter_categories
+CREATE TABLE parameter_categories
 (
     gid integer default nextval('geoindex_gid_seq' :: regclass) not null
     constraint parameter_categories_pkey

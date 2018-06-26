@@ -355,7 +355,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       var included_count = 0
 
       if (stats_values.length > 0) {
-        var query = "insert into bins_year (sensor_id, yyyy, parameter, count, sum, average, start_time, end_time, updated) values "
+        var query = "insert into bins_year (sensor_id, yyyy, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
         var first = true
         stats_values.foreach(s => {
           if (!first) {
@@ -371,7 +371,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
         if (included_count > 0) {
           // excluded - https://stackoverflow.com/questions/34514457/bulk-insert-update-if-on-conflict-bulk-upsert-on-postgres
           query += " on conflict (sensor_id, yyyy, parameter) do update " +
-            "set count = excluded.count, sum = excluded.sum, average = excluded.average, " +
+            "set datapoint_count = excluded.datapoint_count, sum = excluded.sum, average = excluded.average, " +
             "start_time = excluded.start_time, end_time = excluded.end_time, updated = excluded.updated " +
             "where bins_year.sensor_id = excluded.sensor_id and bins_year.yyyy = excluded.yyyy " +
             "and bins_year.parameter = excluded.parameter;"
@@ -405,7 +405,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       var included_count = 0
 
       if (stats_values.length > 0) {
-        var query = "insert into bins_month (sensor_id, yyyy, mm, parameter, count, sum, average, start_time, end_time, updated) values "
+        var query = "insert into bins_month (sensor_id, yyyy, mm, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
         var first = true
         stats_values.foreach(s => {
           if (!first) {
@@ -421,7 +421,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
         if (included_count > 0) {
           // excluded - https://stackoverflow.com/questions/34514457/bulk-insert-update-if-on-conflict-bulk-upsert-on-postgres
           query += " on conflict (sensor_id, yyyy, mm, parameter) do update " +
-            "set count = excluded.count, sum = excluded.sum, average = excluded.average, " +
+            "set datapoint_count = excluded.datapoint_count, sum = excluded.sum, average = excluded.average, " +
             "start_time = excluded.start_time, end_time = excluded.end_time, updated = excluded.updated " +
             "where bins_month.sensor_id = excluded.sensor_id and bins_month.yyyy = excluded.yyyy and " +
             "bins_month.mm = excluded.mm and bins_month.parameter = excluded.parameter;"
@@ -461,7 +461,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       var query_list = ListBuffer[(String, List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)])]()
 
       if (stats_values.length > 0) {
-        var query = "insert into bins_day (sensor_id, yyyy, mm, dd, parameter, count, sum, average, start_time, end_time, updated) values "
+        var query = "insert into bins_day (sensor_id, yyyy, mm, dd, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
         var first = true
         var curr_batch = ListBuffer[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
         var curr_batch_size = 0
@@ -477,7 +477,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           curr_batch_size += 1
           if (curr_batch_size > max_batch_size) {
             query_list += ((query, curr_batch.toList))
-            query = "insert into bins_day (sensor_id, yyyy, mm, dd, parameter, count, sum, average, start_time, end_time, updated) values "
+            query = "insert into bins_day (sensor_id, yyyy, mm, dd, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
             first = true
             curr_batch = ListBuffer[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
             curr_batch_size = 0
@@ -491,7 +491,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           case (query, value_list) => {
             // excluded - https://stackoverflow.com/questions/34514457/bulk-insert-update-if-on-conflict-bulk-upsert-on-postgres
             val complete_query = query + " on conflict (sensor_id, yyyy, mm, dd, parameter) do update " +
-              "set count = excluded.count, sum = excluded.sum, average = excluded.average, " +
+              "set datapoint_count = excluded.datapoint_count, sum = excluded.sum, average = excluded.average, " +
               "start_time = excluded.start_time, end_time = excluded.end_time, updated = excluded.updated " +
               "where bins_day.sensor_id = excluded.sensor_id and bins_day.yyyy = excluded.yyyy and " +
               "bins_day.mm = excluded.mm and bins_day.dd = excluded.dd and " +
@@ -536,7 +536,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       var query_list = ListBuffer[(String, List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)])]()
 
       if (stats_values.length > 0) {
-        var query = "insert into bins_hour (sensor_id, yyyy, mm, dd, hh, parameter, count, sum, average, start_time, end_time, updated) values "
+        var query = "insert into bins_hour (sensor_id, yyyy, mm, dd, hh, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
         var first = true
         var curr_batch = ListBuffer[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
         var curr_batch_size = 0
@@ -552,7 +552,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           curr_batch_size += 1
           if (curr_batch_size > max_batch_size) {
             query_list += ((query, curr_batch.toList))
-            query = "insert into bins_hour (sensor_id, yyyy, mm, dd, hh, parameter, count, sum, average, start_time, end_time, updated) values "
+            query = "insert into bins_hour (sensor_id, yyyy, mm, dd, hh, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
             first = true
             curr_batch = ListBuffer[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
             curr_batch_size = 0
@@ -566,7 +566,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           case (query, value_list) => {
             // excluded - https://stackoverflow.com/questions/34514457/bulk-insert-update-if-on-conflict-bulk-upsert-on-postgres
             val complete_query = query + " on conflict (sensor_id, yyyy, mm, dd, hh, parameter) do update " +
-              "set count = excluded.count, sum = excluded.sum, average = excluded.average, " +
+              "set datapoint_count = excluded.datapoint_count, sum = excluded.sum, average = excluded.average, " +
               "start_time = excluded.start_time, end_time = excluded.end_time, updated = excluded.updated " +
               "where bins_hour.sensor_id = excluded.sensor_id and bins_hour.yyyy = excluded.yyyy and " +
               "bins_hour.mm = excluded.mm and bins_hour.dd = excluded.dd and bins_hour.hh = excluded.hh and " +
@@ -608,7 +608,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     var tot_avg = 0.0
 
     db.withConnection { conn =>
-      var query = "select yyyy, count, sum, average, start_time, end_time from bins_year " +
+      var query = "select yyyy, datapoint_count, sum, average, start_time, end_time from bins_year " +
         "where sensor_id = ? and parameter = ?"
       query += start_year.fold("")(sy => " and yyyy >= ?")
       query += end_year.fold("")(ey => " and yyyy <= ?")
@@ -663,7 +663,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
 
     db.withConnection { conn =>
       // FIRST, BUILD QUERY STRING
-      var query = "select yyyy, mm, count, sum, average, start_time, end_time from bins_month " +
+      var query = "select yyyy, mm, datapoint_count, sum, average, start_time, end_time from bins_month " +
         "where sensor_id = ? and parameter = ?"
       query += start_year.fold("")(sy => " and yyyy >= ?")
       query += end_year.fold("")(ey => " and yyyy <= ?")
@@ -734,7 +734,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
 
     db.withConnection { conn =>
       // FIRST, BUILD QUERY STRING
-      var query = "select yyyy, mm, dd, count, sum, average, start_time, end_time from bins_day " +
+      var query = "select yyyy, mm, dd, datapoint_count, sum, average, start_time, end_time from bins_day " +
         "where sensor_id = ? and parameter = ?"
       query += start_year.fold("")(n => " and yyyy >= ?")
       query += end_year.fold("")(n => " and yyyy <= ?")
@@ -820,7 +820,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
 
     db.withConnection { conn =>
       // FIRST, BUILD QUERY STRING
-      var query = "select yyyy, mm, dd, hh, count, sum, average, start_time, end_time from bins_hour " +
+      var query = "select yyyy, mm, dd, hh, datapoint_count, sum, average, start_time, end_time from bins_hour " +
         "where sensor_id = ? and parameter = ?"
       query += start_year.fold("")(n => " and yyyy >= ?")
       query += end_year.fold("")(n => " and yyyy <= ?")

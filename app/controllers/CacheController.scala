@@ -65,7 +65,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
         case Some(sensor) => {
 
           val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
-          val (start_year, end_year, _, _, _, _, _, _) = parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+          val (start_year, end_year, _, _, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
 
           var result = Json.obj()
 
@@ -116,7 +116,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
       case Some(sensor) => {
 
         val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
-        val (start_year, end_year, _, _, _, _, _, _) = parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+        val (start_year, end_year, _, _, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
         var result = Json.obj()
 
         for (p <- sensorObjectParameters) {
@@ -161,7 +161,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
 
         val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
         val (start_year, end_year, _, _, _, _, _, _) =
-          parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+          DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
         var result = Json.obj()
 
         for (p <- sensorObjectParameters) {
@@ -232,7 +232,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     sensorDB.getSensor(sensor_id) match {
       case Some(sensor) => {
         val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
-        val (start_year, end_year, _, _, _, _, _, _) = parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+        val (start_year, end_year, _, _, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
         var result = Json.obj()
 
         for (p <- sensorObjectParameters) {
@@ -359,7 +359,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
       case Some(sensor) => {
 
         val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
-        val (start_year, end_year, _, _, _, _, _, _) = parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+        val (start_year, end_year, _, _, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
         var result = Json.obj()
 
         for (p <- sensorObjectParameters) {
@@ -562,7 +562,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
 
     sensorDB.getSensor(sensor_id) match {
       case Some(sensor) => {
-        val (start_year, end_year, _, _, _, _, _, _) = parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+        val (start_year, end_year, _, _, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
 
         parameter match {
           case Some(p) => {
@@ -610,7 +610,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
 
     sensorDB.getSensor(sensor_id) match {
       case Some(sensor) => {
-        val (start_year, end_year, start_month, end_month, _, _, _, _) = parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+        val (start_year, end_year, start_month, end_month, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
 
         parameter match {
           case Some(p) => {
@@ -670,7 +670,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
   private def updateSensorStats(sensor: SensorModel, year: Option[Int], month: Option[Int], day: Option[Int],
     hour: Option[Int], parameter: Option[String], restrict: Boolean) = {
     val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
-    val (start_year, end_year, _, _, _, _, _, _) = parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+    val (start_year, end_year, _, _, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
 
     for (p <- sensorObjectParameters) {
       hour match {
@@ -888,24 +888,6 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
         }
       }
     })
-  }
-
-  // Parse start and end strings into component parts
-  // TODO: move to util after merge with GEOD-1087
-  private def parseTimeRange(start_time: String, end_time: String): (Int, Int, Int, Int, Int, Int, Int, Int) = {
-    val start_dt = new DateTime(start_time)
-    val end_dt = new DateTime(end_time)
-
-    (
-      start_dt.getYear(),
-      end_dt.getYear(),
-      start_dt.getMonthOfYear(),
-      end_dt.getMonthOfYear(),
-      start_dt.getDayOfMonth(),
-      end_dt.getDayOfMonth(),
-      start_dt.getHourOfDay(),
-      end_dt.getHourOfDay()
-    )
   }
 
   /*
