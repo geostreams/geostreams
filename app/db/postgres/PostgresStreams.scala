@@ -253,4 +253,19 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
       st.close()
     }
   }
+
+  def deleteStreams(start: Int, end: Int): Unit = {
+    db.withConnection { conn =>
+      val deleteStream = "DELETE from datapoints where stream_id BETWEEN ? AND ? ; " +
+        "DELETE from streams where gid BETWEEN ? AND ?"
+
+      val st = conn.prepareStatement(deleteStream)
+      st.setInt(1, start)
+      st.setInt(2, end)
+      st.setInt(3, start)
+      st.setInt(4, end)
+      st.execute()
+      st.close()
+    }
+  }
 }

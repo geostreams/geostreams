@@ -131,4 +131,9 @@ class StreamController @Inject() (val silhouette: Silhouette[TokenEnv], db: Data
       case None => NotFound(Json.obj("message" -> "Stream not found."))
     }
   }
+
+  def streamDeleteRange(start: Int, end: Int) = SecuredAction(WithService("master")) {
+    streams.deleteStreams(start, end)
+    Ok(Json.obj("status" -> "ok"))
+  }
 }

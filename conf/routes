@@ -47,6 +47,7 @@ PUT           /api/streams/:id                                          controll
 GET           /api/streams/:id/update                                   controllers.StreamController.streamUpdateStatistics(id: Int)
 GET           /api/streams                                              controllers.StreamController.streamsSearch(geocode: Option[String] ?= None, stream_name: Option[String] ?= None)
 DELETE        /api/streams/:id                                          controllers.StreamController.streamDelete(id: Int)
+DELETE        /api/streams                                              controllers.StreamController.streamDeleteRange(start: Int, end: Int)
 
 # Datapoints
 POST          /api/datapoints                                           controllers.DatapointController.datapointCreate(invalidateCache: Boolean ?= true)

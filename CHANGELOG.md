@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Save trends region to DB 
   [GEOD-1087](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1087)  
 - Added parameter controller, model, sql creation script, postgres scripts for creating, updating, deleting and getting parameters.
-  [GEOD_895](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-895)
+  [GEOD-895](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-895)
+- Add endpoint to delete a set of streams 
+  [GEOD-1057](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1057)
  
  
 ### Changed
