@@ -40,6 +40,7 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
     }
   }
 
+  // TODO: Should these be included in the bin cache?
   def getSensorSources(id: Int, parameter: String): List[String] = {
     db.withConnection { conn =>
       val query = "SELECT distinct(datapoints.data->>'source') FROM datapoints, streams where " +

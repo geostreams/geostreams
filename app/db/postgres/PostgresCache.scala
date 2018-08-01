@@ -1,21 +1,24 @@
 package db.postgres
 
-import java.sql.{ Timestamp }
+import java.sql.Timestamp
+import java.text.SimpleDateFormat
 import akka.actor.ActorSystem
 import db.{ Sensors, Cache }
 import javax.inject.Inject
-import play.api.Logger
 import play.api.db.Database
-
 import scala.collection.mutable.ListBuffer
+import utils.DatapointsHelper
+import models.{ SensorModel, DatapointModel }
 
 /**
  * Store aggregate statistics in cache bins to speed up retrieval.
  */
 class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSystem) extends Cache {
 
-  // DO AGGREGATE CALCULATION FOR BINS
-  def calculateBinStatsByYear(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], parameter: String): List[(Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  /* Perform actual query to aggregate datapoint parameter values across specified time range and return resulting bins.
+   *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
+   */
+  private def aggregateStatsByYear(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var bulk_stats = List[(Int, Int, Double, Double, Timestamp, Timestamp)]()
     db.withConnection { conn =>
@@ -28,8 +31,8 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           "      from datapoints, streams " +
           "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ? "
 
-      query += start_year.fold("")(n => " and extract(year from datapoints.start_time) >= ?")
-      query += end_year.fold("")(n => " and extract(year from datapoints.start_time) <= ?")
+      query += since.fold("")(n => " and datapoints.start_time >= ?")
+      query += until.fold("")(n => " and datapoints.start_time <= ?")
       query += " group by yyyy;"
       val st = conn.prepareStatement(query)
 
@@ -38,16 +41,16 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       st.setString(3, parameter)
       st.setInt(4, sensor_id)
       var i = 5
-      start_year match {
+      since match {
         case Some(n) => {
-          st.setInt(i, n)
+          st.setString(i, n)
           i += 1
         }
         case None => {}
       }
-      end_year match {
+      until match {
         case Some(n) => {
-          st.setInt(i, n)
+          st.setString(i, n)
           i += 1
         }
         case None => {}
@@ -72,7 +75,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     bulk_stats
   }
 
-  def calculateBinStatsByMonth(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int], parameter: String): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  private def aggregateStatsByMonth(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var bulk_stats = List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
     db.withConnection { conn =>
@@ -85,10 +88,8 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
           "      from datapoints, streams " +
           "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
-      query += start_year.fold("")(n => " and extract(year from datapoints.start_time) >= ?")
-      query += end_year.fold("")(n => " and extract(year from datapoints.start_time) <= ?")
-      query += start_month.fold("")(n => " and extract(month from datapoints.start_time) >= ?")
-      query += end_month.fold("")(n => " and extract(month from datapoints.start_time) <= ?")
+      query += since.fold("")(n => " and datapoints.start_time >= ?")
+      query += until.fold("")(n => " and datapoints.start_time <= ?")
       query += " group by yyyy, mm;"
       val st = conn.prepareStatement(query)
 
@@ -97,30 +98,16 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       st.setString(3, parameter)
       st.setInt(4, sensor_id)
       var i = 5
-      start_year match {
+      since match {
         case Some(n) => {
-          st.setInt(i, n)
+          st.setString(i, n)
           i += 1
         }
         case None => {}
       }
-      end_year match {
+      until match {
         case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      start_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      end_month match {
-        case Some(n) => {
-          st.setInt(i, n)
+          st.setString(i, n)
           i += 1
         }
         case None => {}
@@ -145,8 +132,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     bulk_stats
   }
 
-  def calculateBinStatsByDay(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int], parameter: String): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  private def aggregateStatsByDay(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var bulk_stats = List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
     db.withConnection { conn =>
@@ -160,12 +146,8 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
           "      from datapoints, streams " +
           "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
-      query += start_year.fold("")(n => " and extract(year from datapoints.start_time) >= ?")
-      query += end_year.fold("")(n => " and extract(year from datapoints.start_time) <= ?")
-      query += start_month.fold("")(n => " and extract(month from datapoints.start_time) >= ?")
-      query += end_month.fold("")(n => " and extract(month from datapoints.start_time) <= ?")
-      query += start_day.fold("")(n => " and extract(day from datapoints.start_time) >= ?")
-      query += end_day.fold("")(n => " and extract(day from datapoints.start_time) <= ?")
+      query += since.fold("")(n => " and datapoints.start_time >= ?")
+      query += until.fold("")(n => " and datapoints.start_time <= ?")
       query += " group by yyyy, mm, dd;"
       val st = conn.prepareStatement(query)
 
@@ -174,44 +156,16 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       st.setString(3, parameter)
       st.setInt(4, sensor_id)
       var i = 5
-      start_year match {
+      since match {
         case Some(n) => {
-          st.setInt(i, n)
+          st.setString(i, n)
           i += 1
         }
         case None => {}
       }
-      end_year match {
+      until match {
         case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      start_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      end_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      start_day match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      end_day match {
-        case Some(n) => {
-          st.setInt(i, n)
+          st.setString(i, n)
           i += 1
         }
         case None => {}
@@ -219,7 +173,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       val stats = st.executeQuery()
 
       while (stats.next()) {
-        if (stats.getInt(5) > 0)
+        if (stats.getInt(4) > 0)
           bulk_stats = bulk_stats :+ (
             stats.getInt(1), // year
             stats.getInt(2), // month
@@ -237,8 +191,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     bulk_stats
   }
 
-  def calculateBinStatsByHour(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int], start_hour: Option[Int], end_hour: Option[Int], parameter: String): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  private def aggregateStatsByHour(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var bulk_stats = List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
     db.withConnection { conn =>
@@ -253,14 +206,8 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
           "      from datapoints, streams " +
           "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
-      query += start_year.fold("")(n => " and extract(year from datapoints.start_time) >= ?")
-      query += end_year.fold("")(n => " and extract(year from datapoints.start_time) <= ?")
-      query += start_month.fold("")(n => " and extract(month from datapoints.start_time) >= ?")
-      query += end_month.fold("")(n => " and extract(month from datapoints.start_time) <= ?")
-      query += start_day.fold("")(n => " and extract(day from datapoints.start_time) >= ?")
-      query += end_day.fold("")(n => " and extract(day from datapoints.start_time) <= ?")
-      query += start_hour.fold("")(n => " and extract(hour from datapoints.start_time) >= ?")
-      query += end_hour.fold("")(n => " and extract(hour from datapoints.start_time) <= ?")
+      query += since.fold("")(n => " and datapoints.start_time >= ?")
+      query += until.fold("")(n => " and datapoints.start_time <= ?")
       query += " group by yyyy, mm, dd, hh;"
       val st = conn.prepareStatement(query)
 
@@ -269,58 +216,16 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       st.setString(3, parameter)
       st.setInt(4, sensor_id)
       var i = 5
-      start_year match {
+      since match {
         case Some(n) => {
-          st.setInt(i, n)
+          st.setString(i, n)
           i += 1
         }
         case None => {}
       }
-      end_year match {
+      until match {
         case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      start_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      end_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      start_day match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      end_day match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      start_hour match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      end_hour match {
-        case Some(n) => {
-          st.setInt(i, n)
+          st.setString(i, n)
           i += 1
         }
         case None => {}
@@ -347,11 +252,13 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     bulk_stats
   }
 
-  // FETCH BIN CALCULATIONS AND STORE IN CACHE
-  def createOrUpdateBinStatsByYear(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], parameter: String): Unit = {
+  /* Calculate bin statistics and insert them into database, updating if records already exist.
+   *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
+   */
+  def calculateBinsByYear(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
     db.withConnection { conn =>
       val curr_time = new Timestamp(System.currentTimeMillis())
-      val stats_values = calculateBinStatsByYear(sensor_id, start_year, end_year, parameter)
+      val stats_values = aggregateStatsByYear(sensor_id, since, until, parameter)
       var included_count = 0
 
       if (stats_values.length > 0) {
@@ -398,10 +305,10 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     }
   }
 
-  def createOrUpdateBinStatsByMonth(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int], parameter: String): Unit = {
+  def calculateBinsByMonth(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
     db.withConnection { conn =>
       val curr_time = new Timestamp(System.currentTimeMillis())
-      val stats_values = calculateBinStatsByMonth(sensor_id, start_year, end_year, start_month, end_month, parameter)
+      val stats_values = aggregateStatsByMonth(sensor_id, since, until, parameter)
       var included_count = 0
 
       if (stats_values.length > 0) {
@@ -449,11 +356,10 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     }
   }
 
-  def createOrUpdateBinStatsByDay(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int], parameter: String): Unit = {
+  def calculateBinsByDay(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
     db.withConnection { conn =>
       val curr_time = new Timestamp(System.currentTimeMillis())
-      val stats_values = calculateBinStatsByDay(sensor_id, start_year, end_year, start_month, end_month, start_day, end_day, parameter)
+      val stats_values = aggregateStatsByDay(sensor_id, since, until, parameter)
 
       // Limit maximum length of a query
       val max_batch_size = 1000
@@ -523,12 +429,10 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     }
   }
 
-  def createOrUpdateBinStatsByHour(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int], start_hour: Option[Int], end_hour: Option[Int], parameter: String): Unit = {
+  def calculateBinsByHour(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
     db.withConnection { conn =>
       val curr_time = new Timestamp(System.currentTimeMillis())
-      val stats_values = calculateBinStatsByHour(sensor_id, start_year, end_year, start_month, end_month,
-        start_day, end_day, start_hour, end_hour, parameter)
+      val stats_values = aggregateStatsByHour(sensor_id, since, until, parameter)
 
       // Limit maximum length of a query
       val max_batch_size = 1000
@@ -599,36 +503,256 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     }
   }
 
-  // GET BIN DATA FROM CACHE
-  def getCachedBinStatsByYear(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], parameter: String, total: Boolean): List[(Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  /* Fetch existing bin stats (or create new bin) and add single datapoint to count/sum/average.
+   *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
+   */
+  def insertIntoBinYear(sensor: SensorModel, dp: DatapointModel, yyyy: Int, parameter: String, value: Double): Unit = {
+    db.withConnection { conn =>
+      val curr_time = new Timestamp(System.currentTimeMillis())
+      val bin_time = Some(yyyy.toString)
+      val existing_stats = getCachedBinStatsByYear(sensor, bin_time, bin_time, parameter, false)
+
+      if (existing_stats.length > 0) {
+        // Need to append to existing bin(s)
+        existing_stats.foreach(s => {
+          val (yyyy, count, sum, avg, start_time, end_time) = s
+          val new_count = count + 1
+          val new_sum = sum + value
+          val new_avg = new_sum / new_count
+
+          val query = "update bins_year set datapoint_count = ?, sum = ?, average = ?, updated = ? " +
+            "where sensor_id = ? and yyyy = ? and parameter = ?;"
+          val st = conn.prepareStatement(query)
+          st.setInt(1, new_count)
+          st.setDouble(2, new_sum)
+          st.setDouble(3, new_avg)
+          st.setTimestamp(4, curr_time)
+          st.setInt(5, sensor.id)
+          st.setInt(6, yyyy)
+          st.setString(7, parameter)
+          st.execute()
+          st.close()
+        })
+
+      } else {
+        // Need to create a new bin
+        val query = "insert into bins_year (sensor_id, yyyy, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
+          "values (?, ?, ?, ?, ?, ?, ?, ?, ?);"
+        val st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setInt(2, yyyy)
+        st.setString(3, parameter)
+        st.setInt(4, 1)
+        st.setDouble(5, value)
+        st.setDouble(6, value)
+        val format = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSz")
+        st.setTimestamp(7, new Timestamp(format.parse(dp.start_time).getTime))
+        st.setTimestamp(8, dp.end_time match {
+          case Some(et) => new Timestamp(format.parse(et).getTime)
+          case None => new Timestamp(format.parse(dp.start_time).getTime)
+        })
+        st.setTimestamp(9, curr_time)
+        st.execute()
+        st.close()
+      }
+    }
+  }
+
+  def insertIntoBinMonth(sensor: SensorModel, dp: DatapointModel, yyyy: Int, mm: Int, parameter: String, value: Double): Unit = {
+    db.withConnection { conn =>
+      val curr_time = new Timestamp(System.currentTimeMillis())
+      val bin_time = Some(yyyy.toString + "-" + mm.toString)
+      val existing_stats = getCachedBinStatsByMonth(sensor, bin_time, bin_time, parameter, false)
+
+      if (existing_stats.length > 0) {
+        // Need to append to existing bin(s)
+        existing_stats.foreach(s => {
+          val (yyyy, mm, count, sum, avg, start_time, end_time) = s
+          val new_count = count + 1
+          val new_sum = sum + value
+          val new_avg = new_sum / new_count
+
+          val query = "update bins_month set datapoint_count = ?, sum = ?, average = ?, updated = ? " +
+            "where sensor_id = ? and yyyy = ? and and mm = ? and parameter = ?;"
+          val st = conn.prepareStatement(query)
+          st.setInt(1, new_count)
+          st.setDouble(2, new_sum)
+          st.setDouble(3, new_avg)
+          st.setTimestamp(4, curr_time)
+          st.setInt(5, sensor.id)
+          st.setInt(6, yyyy)
+          st.setInt(7, mm)
+          st.setString(8, parameter)
+          st.execute()
+          st.close()
+        })
+
+      } else {
+        // Need to create a new bin
+        val query = "insert into bins_month (sensor_id, yyyy, mm, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
+          "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
+        val st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setInt(2, yyyy)
+        st.setInt(3, mm)
+        st.setString(4, parameter)
+        st.setInt(5, 1)
+        st.setDouble(6, value)
+        st.setDouble(7, value)
+        val format = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSz")
+        st.setTimestamp(8, new Timestamp(format.parse(dp.start_time).getTime))
+        st.setTimestamp(9, dp.end_time match {
+          case Some(et) => new Timestamp(format.parse(et).getTime)
+          case None => new Timestamp(format.parse(dp.start_time).getTime)
+        })
+        st.setTimestamp(10, curr_time)
+        st.execute()
+        st.close()
+      }
+    }
+  }
+
+  def insertIntoBinDay(sensor: SensorModel, dp: DatapointModel, yyyy: Int, mm: Int, dd: Int, parameter: String, value: Double): Unit = {
+    db.withConnection { conn =>
+      val curr_time = new Timestamp(System.currentTimeMillis())
+      val bin_time = Some(yyyy.toString + "-" + mm.toString + "-" + dd.toString)
+      val existing_stats = getCachedBinStatsByDay(sensor, bin_time, bin_time, parameter, false)
+
+      if (existing_stats.length > 0) {
+        // Need to append to existing bin(s)
+        existing_stats.foreach(s => {
+          val (yyyy, mm, dd, count, sum, avg, start_time, end_time) = s
+          val new_count = count + 1
+          val new_sum = sum + value
+          val new_avg = new_sum / new_count
+
+          val query = "update bins_month set datapoint_count = ?, sum = ?, average = ?, updated = ? " +
+            "where sensor_id = ? and yyyy = ? and and mm = ? and dd = ? and parameter = ?;"
+          val st = conn.prepareStatement(query)
+          st.setInt(1, new_count)
+          st.setDouble(2, new_sum)
+          st.setDouble(3, new_avg)
+          st.setTimestamp(4, curr_time)
+          st.setInt(5, sensor.id)
+          st.setInt(6, yyyy)
+          st.setInt(7, mm)
+          st.setInt(8, dd)
+          st.setString(9, parameter)
+          st.execute()
+          st.close()
+        })
+
+      } else {
+        // Need to create a new bin
+        val query = "insert into bins_month (sensor_id, yyyy, mm, dd, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
+          "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
+        val st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setInt(2, yyyy)
+        st.setInt(3, mm)
+        st.setInt(4, dd)
+        st.setString(5, parameter)
+        st.setInt(6, 1)
+        st.setDouble(7, value)
+        st.setDouble(8, value)
+        val format = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSz")
+        st.setTimestamp(9, new Timestamp(format.parse(dp.start_time).getTime))
+        st.setTimestamp(10, dp.end_time match {
+          case Some(et) => new Timestamp(format.parse(et).getTime)
+          case None => new Timestamp(format.parse(dp.start_time).getTime)
+        })
+        st.setTimestamp(11, curr_time)
+        st.execute()
+        st.close()
+      }
+    }
+  }
+
+  def insertIntoBinHour(sensor: SensorModel, dp: DatapointModel, yyyy: Int, mm: Int, dd: Int, hh: Int, parameter: String, value: Double): Unit = {
+    db.withConnection { conn =>
+      val curr_time = new Timestamp(System.currentTimeMillis())
+      val bin_time = Some(yyyy.toString + "-" + mm.toString + "-" + dd.toString + "T" + hh.toString + ":00:00.000")
+      val existing_stats = getCachedBinStatsByHour(sensor, bin_time, bin_time, parameter, false)
+
+      if (existing_stats.length > 0) {
+        // Need to append to existing bin(s)
+        existing_stats.foreach(s => {
+          val (yyyy, mm, dd, hh, count, sum, avg, start_time, end_time) = s
+          val new_count = count + 1
+          val new_sum = sum + value
+          val new_avg = new_sum / new_count
+
+          val query = "update bins_month set datapoint_count = ?, sum = ?, average = ?, updated = ? " +
+            "where sensor_id = ? and yyyy = ? and and mm = ? and dd = ? and hh = ? and parameter = ?;"
+          val st = conn.prepareStatement(query)
+          st.setInt(1, new_count)
+          st.setDouble(2, new_sum)
+          st.setDouble(3, new_avg)
+          st.setTimestamp(4, curr_time)
+          st.setInt(5, sensor.id)
+          st.setInt(6, yyyy)
+          st.setInt(7, mm)
+          st.setInt(8, dd)
+          st.setInt(9, hh)
+          st.setString(10, parameter)
+          st.execute()
+          st.close()
+        })
+
+      } else {
+        // Need to create a new bin
+        val query = "insert into bins_month (sensor_id, yyyy, mm, dd, hh, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
+          "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
+        val st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setInt(2, yyyy)
+        st.setInt(3, mm)
+        st.setInt(4, dd)
+        st.setInt(5, hh)
+        st.setString(6, parameter)
+        st.setInt(7, 1)
+        st.setDouble(8, value)
+        st.setDouble(9, value)
+        val format = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSz")
+        st.setTimestamp(10, new Timestamp(format.parse(dp.start_time).getTime))
+        st.setTimestamp(11, dp.end_time match {
+          case Some(et) => new Timestamp(format.parse(et).getTime)
+          case None => new Timestamp(format.parse(dp.start_time).getTime)
+        })
+        st.setTimestamp(12, curr_time)
+        st.execute()
+        st.close()
+      }
+    }
+  }
+
+  /* Fetch existing bin statistics from cache for a specific parameter.
+   *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
+   *  total -- true will return a single total for all bins requested, instead of individual bins.
+   */
+  def getCachedBinStatsByYear(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var result = List[(Int, Int, Double, Double, Timestamp, Timestamp)]()
     var tot_count = 0
     var tot_sum = 0.0
     var tot_avg = 0.0
 
+    val (start_year, end_year, start_month, end_month, start_day, end_day, start_hour, end_hour) = (since, until) match {
+      case (Some(start_time), Some(end_time)) => DatapointsHelper.parseTimeRange(start_time, end_time)
+      case (Some(start_time), None) => DatapointsHelper.parseTimeRange(start_time, sensor.max_end_time)
+      case (None, Some(end_time)) => DatapointsHelper.parseTimeRange(sensor.min_start_time, end_time)
+      case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+    }
+
     db.withConnection { conn =>
-      var query = "select yyyy, datapoint_count, sum, average, start_time, end_time from bins_year " +
-        "where sensor_id = ? and parameter = ?"
-      query += start_year.fold("")(sy => " and yyyy >= ?")
-      query += end_year.fold("")(ey => " and yyyy <= ?")
+      val query = "select yyyy, datapoint_count, sum, average, start_time, end_time from bins_year " +
+        "where sensor_id = ? and parameter = ? and yyyy >= ? and yyyy <= ?;"
       val st = conn.prepareStatement(query)
 
-      st.setInt(1, sensor_id)
+      st.setInt(1, sensor.id)
       st.setString(2, parameter)
-      var i = 3
-      start_year match {
-        case Some(sy) => {
-          st.setInt(i, sy)
-          i += 1
-        }
-      }
-      end_year match {
-        case Some(ey) => {
-          st.setInt(i, ey)
-          i += 1
-        }
-      }
+      st.setInt(3, start_year)
+      st.setInt(4, end_year)
       val stats = st.executeQuery()
 
       while (stats.next()) {
@@ -654,53 +778,54 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       result
   }
 
-  def getCachedBinStatsByMonth(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int], parameter: String, total: Boolean): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  def getCachedBinStatsByMonth(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var result = List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
     var tot_count = 0
     var tot_sum = 0.0
     var tot_avg = 0.0
 
+    val (start_year, end_year, start_month, end_month, start_day, end_day, start_hour, end_hour) = (since, until) match {
+      case (Some(start_time), Some(end_time)) => DatapointsHelper.parseTimeRange(start_time, end_time)
+      case (Some(start_time), None) => DatapointsHelper.parseTimeRange(start_time, sensor.max_end_time)
+      case (None, Some(end_time)) => DatapointsHelper.parseTimeRange(sensor.min_start_time, end_time)
+      case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+    }
+
     db.withConnection { conn =>
-      // FIRST, BUILD QUERY STRING
-      var query = "select yyyy, mm, datapoint_count, sum, average, start_time, end_time from bins_month " +
-        "where sensor_id = ? and parameter = ?"
-      query += start_year.fold("")(sy => " and yyyy >= ?")
-      query += end_year.fold("")(ey => " and yyyy <= ?")
-      query += start_month.fold("")(sm => " and mm >= ?")
-      query += end_month.fold("")(em => " and mm <= ?")
-      val st = conn.prepareStatement(query)
-
-      // NEXT USE SAME LOGIC TO POPULATE ? VALUES
-      st.setInt(1, sensor_id)
-      st.setString(2, parameter)
-      var i = 3
-      start_year match {
-        case Some(sy) => {
-          st.setInt(i, sy)
-          i += 1
-        }
-      }
-      end_year match {
-        case Some(ey) => {
-          st.setInt(i, ey)
-          i += 1
-        }
-      }
-      start_month match {
-        case Some(sm) => {
-          st.setInt(i, sm)
-          i += 1
-        }
-      }
-      end_month match {
-        case Some(em) => {
-          st.setInt(i, em)
-          i += 1
-        }
+      var st = conn.prepareStatement("")
+      val stats = if (start_year != end_year) {
+        /**
+         * If the years aren't the same, 3 possible cases:
+         * 1) start_year, check if mm,dd > start
+         * 2) end_year, check if mm,dd < end
+         * 3) middle years, include all mm,dd
+         */
+        val query = "select yyyy, mm, datapoint_count, sum, average, start_time, end_time from bins_month " +
+          "where sensor_id = ? and parameter = ? and " +
+          "((yyyy = ? and mm >= ?) or (yyyy = ? and mm <= ?) or (yyyy > ? and yyyy < ?));"
+        st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setString(2, parameter)
+        st.setInt(3, start_year)
+        st.setInt(4, start_month)
+        st.setInt(5, end_year)
+        st.setInt(6, end_month)
+        st.setInt(7, start_year)
+        st.setInt(8, end_year)
+        st.executeQuery()
+      } else {
+        val query = "select yyyy, mm, datapoint_count, sum, average, start_time, end_time from bins_month " +
+          "where sensor_id = ? and parameter = ? and (yyyy = ? and mm >= ? and mm <= ?);"
+        st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setString(2, parameter)
+        st.setInt(3, start_year)
+        st.setInt(4, start_month)
+        st.setInt(5, end_month)
+        st.executeQuery()
       }
 
-      val stats = st.executeQuery()
       while (stats.next()) {
         tot_count += stats.getInt(3)
         tot_sum += stats.getDouble(4)
@@ -724,68 +849,67 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       result
   }
 
-  def getCachedBinStatsByDay(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  def getCachedBinStatsByDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var result = List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
     var tot_count = 0
     var tot_sum = 0.0
     var tot_avg = 0.0
 
+    val (start_year, end_year, start_month, end_month, start_day, end_day, start_hour, end_hour) = (since, until) match {
+      case (Some(start_time), Some(end_time)) => DatapointsHelper.parseTimeRange(start_time, end_time)
+      case (Some(start_time), None) => DatapointsHelper.parseTimeRange(start_time, sensor.max_end_time)
+      case (None, Some(end_time)) => DatapointsHelper.parseTimeRange(sensor.min_start_time, end_time)
+      case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+    }
+
     db.withConnection { conn =>
-      // FIRST, BUILD QUERY STRING
-      var query = "select yyyy, mm, dd, datapoint_count, sum, average, start_time, end_time from bins_day " +
-        "where sensor_id = ? and parameter = ?"
-      query += start_year.fold("")(n => " and yyyy >= ?")
-      query += end_year.fold("")(n => " and yyyy <= ?")
-      query += start_month.fold("")(n => " and mm >= ?")
-      query += end_month.fold("")(n => " and mm <= ?")
-      query += start_day.fold("")(n => " and dd >= ?")
-      query += end_day.fold("")(n => " and dd <= ?")
-      val st = conn.prepareStatement(query)
+      var st = conn.prepareStatement("")
 
-      // NEXT USE SAME LOGIC TO POPULATE ? VALUES
-      st.setInt(1, sensor_id)
-      st.setString(2, parameter)
-      var i = 3
-      start_year match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      end_year match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      start_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      end_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      start_day match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      end_day match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
+      val stats = if (start_year != end_year) {
+        val query = "select yyyy, mm, dd, datapoint_count, sum, average, start_time, end_time from bins_day " +
+          "where sensor_id = ? and parameter = ? and (" +
+          // start_year subclause -- special check for start_month+start_day, then get everything after
+          " (yyyy = ? and ((mm = ? and dd >= ?) or (mm > ?))) or " +
+          // end_year subclause -- special check for end_month+end_day, then get everything before
+          " (yyyy = ? and ((mm = ? and dd <= ?) or (mm < ?))) or " +
+          // between subclause -- get everything for these months
+          " (yyyy > ? and yyyy < ?));"
+        st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setString(2, parameter)
+        // start_year subclause
+        st.setInt(3, start_year)
+        st.setInt(4, start_month)
+        st.setInt(5, start_day)
+        st.setInt(6, start_month)
+        // end_year subclause
+        st.setInt(7, end_year)
+        st.setInt(8, end_month)
+        st.setInt(9, end_day)
+        st.setInt(10, end_month)
+        // between subclause
+        st.setInt(11, start_year)
+        st.setInt(12, end_year)
+        st.executeQuery()
+      } else {
+        val query = "select yyyy, mm, dd, datapoint_count, sum, average, start_time, end_time from bins_day " +
+          "where sensor_id = ? and parameter = ? and yyyy = ? and " +
+          // for single year, we just need to check start_month and end_month days and get everything in-between
+          "((mm = ? and dd >= ?) or (mm = ? and dd <= ?) or (mm > ? and mm < ?));"
+        st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setString(2, parameter)
+        st.setInt(3, start_year)
+        st.setInt(4, start_month)
+        st.setInt(5, start_day)
+        st.setInt(6, end_month)
+        st.setInt(7, end_day)
+        st.setInt(8, start_month)
+        st.setInt(9, end_month)
+        st.executeQuery()
       }
 
-      val stats = st.executeQuery()
       while (stats.next()) {
         tot_count += stats.getInt(3)
         tot_sum += stats.getDouble(4)
@@ -810,82 +934,83 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       result
   }
 
-  def getCachedBinStatsByHour(sensor_id: Int, start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int], start_hour: Option[Int], end_hour: Option[Int], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  def getCachedBinStatsByHour(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var result = List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
     var tot_count = 0
     var tot_sum = 0.0
     var tot_avg = 0.0
 
+    val (start_year, end_year, start_month, end_month, start_day, end_day, start_hour, end_hour) = (since, until) match {
+      case (Some(start_time), Some(end_time)) => DatapointsHelper.parseTimeRange(start_time, end_time)
+      case (Some(start_time), None) => DatapointsHelper.parseTimeRange(start_time, sensor.max_end_time)
+      case (None, Some(end_time)) => DatapointsHelper.parseTimeRange(sensor.min_start_time, end_time)
+      case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+    }
+
     db.withConnection { conn =>
-      // FIRST, BUILD QUERY STRING
-      var query = "select yyyy, mm, dd, hh, datapoint_count, sum, average, start_time, end_time from bins_hour " +
-        "where sensor_id = ? and parameter = ?"
-      query += start_year.fold("")(n => " and yyyy >= ?")
-      query += end_year.fold("")(n => " and yyyy <= ?")
-      query += start_month.fold("")(n => " and mm >= ?")
-      query += end_month.fold("")(n => " and mm <= ?")
-      query += start_day.fold("")(n => " and dd >= ?")
-      query += end_day.fold("")(n => " and dd <= ?")
-      query += start_hour.fold("")(n => " and hh >= ?")
-      query += end_hour.fold("")(n => " and hh <= ?")
-      val st = conn.prepareStatement(query)
-
-      // NEXT USE SAME LOGIC TO POPULATE ? VALUES
-      st.setInt(1, sensor_id)
-      st.setString(2, parameter)
-      var i = 3
-      start_year match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      end_year match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      start_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      end_month match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      start_day match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      end_day match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      start_hour match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
-      }
-      end_hour match {
-        case Some(n) => {
-          st.setInt(i, n)
-          i += 1
-        }
+      var st = conn.prepareStatement("")
+      val stats = if (start_year != end_year) {
+        val query = "select yyyy, mm, dd, hh, datapoint_count, sum, average, start_time, end_time from bins_hour " +
+          "where sensor_id = ? and parameter = ? and (" +
+          // start_year subclause -- special check for start_month+start_day+start_hour, then get everything after
+          " (yyyy = ? and ((mm = ? and dd = ? and hh >= ?) or (mm = ? and dd > ?) or (mm > ?))) or " +
+          // end_year subclause -- special check for end_month+end_day+end_hour, then get everything before
+          " (yyyy = ? and ((mm = ? and dd = ? and hh <= ?) or (mm = ? and dd < ?) or (mm < ?))) or " +
+          // between subclause -- get everything for these months
+          " (yyyy > ? and yyyy < ?));"
+        st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setString(2, parameter)
+        // start_year subclause
+        st.setInt(3, start_year)
+        st.setInt(4, start_month)
+        st.setInt(5, start_day)
+        st.setInt(6, start_hour)
+        st.setInt(7, start_month)
+        st.setInt(8, start_day)
+        st.setInt(9, start_month)
+        // end_year subclause
+        st.setInt(10, end_year)
+        st.setInt(11, end_month)
+        st.setInt(12, end_day)
+        st.setInt(13, end_hour)
+        st.setInt(14, end_month)
+        st.setInt(15, end_day)
+        st.setInt(16, end_month)
+        // between subclause
+        st.setInt(17, start_year)
+        st.setInt(18, end_year)
+        st.executeQuery()
+      } else {
+        val query = "select yyyy, mm, dd, hh, datapoint_count, sum, average, start_time, end_time from bins_hour " +
+          "where sensor_id = ? and parameter = ? and yyyy = ? and (" +
+          // for single year, we just need to check start_month and end_month days+hours and get everything in-between
+          " (mm = ? and dd = ? and hh >= ?) or (mm = ? and dd > ?) or " +
+          " (mm = ? and dd = ? and hh <= ?) or (mm = ? and dd < ?) or " +
+          " (mm > ? and mm < ?));"
+        st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setString(2, parameter)
+        st.setInt(3, start_year)
+        // start_month subclause
+        st.setInt(4, start_month)
+        st.setInt(5, start_day)
+        st.setInt(6, start_hour)
+        st.setInt(7, start_month)
+        st.setInt(8, start_day)
+        // end_month subclause
+        st.setInt(9, end_month)
+        st.setInt(10, end_day)
+        st.setInt(11, end_hour)
+        st.setInt(12, end_month)
+        st.setInt(13, end_day)
+        // between subclause
+        st.setInt(14, start_month)
+        st.setInt(15, end_month)
+        st.executeQuery()
       }
 
-      val stats = st.executeQuery()
       while (stats.next()) {
         tot_count += stats.getInt(3)
         tot_sum += stats.getDouble(4)

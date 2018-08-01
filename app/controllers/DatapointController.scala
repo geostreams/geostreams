@@ -25,7 +25,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  */
 @Singleton
 class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB: Sensors, datapointDB: Datapoints, userDB: Users,
-  eventsDB: Events, regionDB: RegionTrends, conf: Configuration)(implicit val messagesApi: MessagesApi)
+  eventsDB: Events, regionDB: RegionTrends, conf: Configuration, cache: CacheController)(implicit val messagesApi: MessagesApi)
     extends AuthTokenController with I18nSupport {
 
   /**
@@ -44,6 +44,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], senso
       },
       datapoint => {
         val id = datapointDB.addDatapoint(datapoint)
+        cache.appendToBins(datapoint.sensor_id, id)
         Ok(Json.obj("status" -> "OK", "id" -> id))
       }
     )
@@ -62,8 +63,8 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], senso
         BadRequest(Json.obj("status" -> "KO", "message" -> JsError.toJson(errors)))
       },
       datapointlist => {
-        val datapintCount = datapointDB.addDatapoints(datapointlist)
-        Ok(Json.obj("status" -> "OK", "count" -> datapintCount))
+        val datapointCount = datapointDB.addDatapoints(datapointlist)
+        Ok(Json.obj("status" -> "OK", "count" -> datapointCount))
       }
     )
   }
@@ -147,6 +148,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], senso
     }
   }
 
+  // TODO: Is this deprecated now that CacheController exists?
   def datapointsBin(time: String, depth: Double, keepRaw: Boolean, since: Option[String], until: Option[String],
     geocode: Option[String], stream_id: Option[String], sensor_id: Option[String], sources: List[String],
     attributes: List[String]) = Action {

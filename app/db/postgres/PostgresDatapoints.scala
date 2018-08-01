@@ -46,7 +46,6 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors, actSys: Acto
       val id = rs.getInt(1)
       rs.close()
       ps.close()
-      // TODO: Update necessary bins
       id
     }
   }
@@ -85,7 +84,6 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors, actSys: Acto
       ps.executeUpdate()
       val rs = ps.getUpdateCount
       ps.close()
-      // TODO: Update necessary bins
       rs
     }
   }

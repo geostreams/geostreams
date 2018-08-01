@@ -71,14 +71,14 @@ DELETE        /api/parameters/name/:name                                controll
 DELETE        /api/parameters/:id                                       controllers.ParameterController.deleteParameter(id: Int)
 
 # Cache
-POST          /api/cache                                                controllers.CacheController.createOrUpdateBins(sensor_id: Option[Int] ?= None, year: Option[Int], month: Option[Int], day: Option[Int], hour: Option[Int], parameter: Option[String] ?= None, restrict: Boolean ?= true)
-GET           /api/cache/year/:sensor_id                                controllers.CacheController.getCachedBinStatsYear(sensor_id: Int, year: Option[Int] ?= None, updateBins : Boolean ?= true, parameter: Option[String] ?= None)
-GET           /api/cache/month/:sensor_id                               controllers.CacheController.getCachedBinStatsMonth(sensor_id: Int, year: Option[Int], month: Option[Int], updateBins: Boolean ?= true, parameter: Option[String] ?= None)
-GET           /api/cache/day/:sensor_id                                 controllers.CacheController.getCachedBinStatsDay(sensor_id: Int, year: Option[Int], month: Option[Int], day: Option[Int], updateBins: Boolean ?= true, parameter: Option[String] ?= None)
-GET           /api/cache/hour/:sensor_id                                controllers.CacheController.getCachedBinStatsHour(sensor_id: Int, year: Option[Int], month: Option[Int], day: Option[Int], hour: Option[Int], updateBins: Boolean ?= true, parameter: Option[String] ?= None)
-GET           /api/cache/season/:sensor_id                              controllers.CacheController.getCachedBinStatsSeason(sensor_id: Int, updateBins: Boolean ?= true, parameter: Option[String] ?= None)
-GET           /api/cache/trends/year/:sensor_id                         controllers.CacheController.getTrendsForParameterYear(sensor_id: Int, parameter: Option[String])
-GET           /api/cache/trends/month/:sensor_id                        controllers.CacheController.getTrendsForParameterMonth(sensor_id: Int, parameter: Option[String])
+POST          /api/cache                                                controllers.CacheController.calculateBins(sensor_id: Option[Int] ?= None, since: Option[String], until: Option[String], parameter: Option[String] ?= None)
+GET           /api/cache/year/:sensor_id                                controllers.CacheController.getCachedBinStatsYear(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
+GET           /api/cache/month/:sensor_id                               controllers.CacheController.getCachedBinStatsMonth(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
+GET           /api/cache/day/:sensor_id                                 controllers.CacheController.getCachedBinStatsDay(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
+GET           /api/cache/hour/:sensor_id                                controllers.CacheController.getCachedBinStatsHour(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
+GET           /api/cache/season/:sensor_id                              controllers.CacheController.getCachedBinStatsSeason(sensor_id: Int, updateBins: Boolean ?= false, parameter: Option[String] ?= None)
+GET           /api/cache/trends/year/:sensor_id                         controllers.CacheController.getTrendsForParameterYear(sensor_id: Int, since: Option[String], until: Option[String], parameter: Option[String])
+GET           /api/cache/trends/month/:sensor_id                        controllers.CacheController.getTrendsForParameterMonth(sensor_id: Int, since: Option[String], until: Option[String], parameter: Option[String])
 
 # Admin
 DELETE        /api/dropall                                              controllers.AdminController.deleteAll
