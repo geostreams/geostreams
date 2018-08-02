@@ -28,7 +28,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Changed header and email title
 - Changed most controllers from cookie authenticator to BearerToken authenticator. HomeController still uses Cookie authenticator
   [GEOD-1066](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1066)
-- Replace count in SQL [GEOD-1108](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1108)  
+- Replace count in SQL 
+  [GEOD-1108](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1108)  
+- Changed binning methods to be compatible with the front-end 
+  [GEOD-1118](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1118)
  
 ### Fixed 
 - Out of memory error when user requests large downloads

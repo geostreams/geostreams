@@ -10,7 +10,13 @@ object DatapointsHelper {
   // Parse start and end strings into component parts
   def parseTimeRange(start_time: String, end_time: String): (Int, Int, Int, Int, Int, Int, Int, Int) = {
     val start_dt = new DateTime(start_time)
-    val end_dt = new DateTime(end_time)
+    // Round end date to the end of time period, not the start (e.g. Dec 31st of end year, not Jan 1)
+    val end_dt = end_time.length match {
+      case 4 => new DateTime(end_time + "-12-31T23:59:59.999")
+      case 7 => new DateTime(end_time + "-31T23:59:59.999")
+      case 10 => new DateTime(end_time + "T23:59:59.999")
+      case _ => new DateTime(end_time)
+    }
 
     (
       start_dt.getYear(),

@@ -1,65 +1,37 @@
 package db
 
 import java.sql.Timestamp
-
 import com.google.inject.ImplementedBy
 import db.postgres.PostgresCache
+import models.{ SensorModel, DatapointModel }
 
 /**
  * Access Cache store.
  */
 @ImplementedBy(classOf[PostgresCache])
 trait Cache {
-  def createOrUpdateBinStatsByYear(
-    sensor_id: Int,
-    start_year: Option[Int], end_year: Option[Int],
-    parameter: String
-  )
+  def calculateBinsByYear(sensor_id: Int, since: Option[String], until: Option[String], parameter: String)
 
-  def createOrUpdateBinStatsByMonth(
-    sensor_id: Int,
-    start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    parameter: String
-  )
+  def calculateBinsByMonth(sensor_id: Int, since: Option[String], until: Option[String], parameter: String)
 
-  def createOrUpdateBinStatsByDay(
-    sensor_id: Int,
-    start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int],
-    parameter: String
-  )
+  def calculateBinsByDay(sensor_id: Int, since: Option[String], until: Option[String], parameter: String)
 
-  def createOrUpdateBinStatsByHour(
-    sensor_id: Int,
-    start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int], start_hour: Option[Int], end_hour: Option[Int],
-    parameter: String
-  )
+  def calculateBinsByHour(sensor_id: Int, since: Option[String], until: Option[String], parameter: String)
 
-  def getCachedBinStatsByYear(
-    sensor_id: Int,
-    start_year: Option[Int], end_year: Option[Int],
-    parameter: String, total: Boolean
-  ): List[(Int, Int, Double, Double, Timestamp, Timestamp)]
+  def insertIntoBinYear(sensor: SensorModel, dp: DatapointModel, yyyy: Int, parameter: String, value: Double)
 
-  def getCachedBinStatsByMonth(
-    sensor_id: Int,
-    start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    parameter: String, total: Boolean
-  ): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)]
+  def insertIntoBinMonth(sensor: SensorModel, dp: DatapointModel, yyyy: Int, mm: Int, parameter: String, value: Double)
 
-  def getCachedBinStatsByDay(
-    sensor_id: Int,
-    start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int],
-    parameter: String, total: Boolean
-  ): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]
+  def insertIntoBinDay(sensor: SensorModel, dp: DatapointModel, yyyy: Int, mm: Int, dd: Int, parameter: String, value: Double)
 
-  def getCachedBinStatsByHour(
-    sensor_id: Int,
-    start_year: Option[Int], end_year: Option[Int], start_month: Option[Int], end_month: Option[Int],
-    start_day: Option[Int], end_day: Option[Int], start_hour: Option[Int], end_hour: Option[Int],
-    parameter: String, total: Boolean
-  ): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]
+  def insertIntoBinHour(sensor: SensorModel, dp: DatapointModel, yyyy: Int, mm: Int, dd: Int, hh: Int, parameter: String, value: Double)
+
+  def getCachedBinStatsByYear(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Double, Double, Timestamp, Timestamp)]
+
+  def getCachedBinStatsByMonth(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)]
+
+  def getCachedBinStatsByDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]
+
+  def getCachedBinStatsByHour(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]
 
 }
