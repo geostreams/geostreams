@@ -503,7 +503,7 @@ CREATE TABLE categories
 );
 
 CREATE UNIQUE index categories_id_uindex
-  on categories (id);
+  on categories (gid);
 
 ALTER TABLE categories OWNER TO clowder;
 
