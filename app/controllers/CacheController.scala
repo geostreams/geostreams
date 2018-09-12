@@ -44,6 +44,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
               cacheDB.calculateBinsByDay(sensor.id, since, until, p)
               cacheDB.calculateBinsByMonth(sensor.id, since, until, p)
               cacheDB.calculateBinsByYear(sensor.id, since, until, p)
+              cacheDB.calculateBinsBySeason(sensor.id, since, until, p)
             }
             Ok(Json.obj("status" -> "OK"))
           }
@@ -60,6 +61,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
             cacheDB.calculateBinsByDay(sensor.id, since, until, p)
             cacheDB.calculateBinsByMonth(sensor.id, since, until, p)
             cacheDB.calculateBinsByYear(sensor.id, since, until, p)
+            cacheDB.calculateBinsBySeason(sensor.id, since, until, p)
           }
         })
 
@@ -68,12 +70,30 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     }
   }
 
+  def getSeason(yyyy: Int, mm: Int, dd: Int): (Int, String) = {
+    var season = ""
+    var year = yyyy
+    if ((mm == 12 && dd >= 21) || (mm <= 3 && dd <= 20)) {
+      season = "winter"
+      if(mm == 12) {
+        year += 1
+      }
+    } else if ((mm == 3 && dd >= 21) || mm == 4 || mm == 5 || (mm == 6 && dd <= 20)) {
+      season = "spring"
+    } else if ((mm == 6 && dd >= 21) || mm == 7 || mm == 8 || (mm == 9 && dd <= 20)) {
+      season = "summer"
+    } else {
+      season = "fall"
+    }
+    return (year, season)
+  }
+
   /*
-   * Try to fetch an existing bin and add a single datapoint to it, creating a new bin if necessary.
-   *  sensor_id -- if not specified, all sensors will be generated
-   *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
-   *  parameter -- if not specified, all parameters will be generated
-   */
+     * Try to fetch an existing bin and add a single datapoint to it, creating a new bin if necessary.
+     *  sensor_id -- if not specified, all sensors will be generated
+     *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
+     *  parameter -- if not specified, all parameters will be generated
+     */
   def appendToBins(sensor_id: Int, datapoint_id: Int) = SecuredAction(WithService("master")) {
     sensorDB.getSensor(sensor_id) match {
       case Some(sensor) => {
@@ -84,6 +104,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
             val mm = target_time.getMonthOfYear()
             val dd = target_time.getDayOfMonth()
             val hh = target_time.getHourOfDay()
+            val (season_year, season) = getSeason(yyyy, mm, dd)
 
             val sensorObjectParameters = filterParameters(sensor.parameters, None)
             for (p <- sensorObjectParameters) {
@@ -94,6 +115,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
                     cacheDB.insertIntoBinMonth(sensor, dp, yyyy, mm, p, value.toDouble)
                     cacheDB.insertIntoBinDay(sensor, dp, yyyy, mm, dd, p, value.toDouble)
                     cacheDB.insertIntoBinHour(sensor, dp, yyyy, mm, dd, hh, p, value.toDouble)
+                    cacheDB.insertIntoBinSeason(sensor, dp, season_year, season, p, value.toDouble)
                   } catch {
                     case e: NumberFormatException => {}
                   }
@@ -220,72 +242,17 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     }
   }
 
-  def getCachedBinStatsSeason(sensor_id: Int, updateBins: Boolean, parameter: Option[String]) = Action {
+  def getCachedBinStatsSeason(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean, parameter: Option[String], season: Option[String]) = Action {
     sensorDB.getSensor(sensor_id) match {
       case Some(sensor) => {
 
         val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
-        val (start_year, end_year, _, _, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
         var result = Json.obj()
 
         for (p <- sensorObjectParameters) {
           val sources = sensorDB.getSensorSources(sensor_id, p)
-          var param = ListBuffer[JsValue]()
+          result += (p -> buildJsonBinsSeason(sensor, season, since, until, p, sources, updateBins))
 
-          for (current_year <- start_year to end_year) {
-
-            // WINTER = 12/21 - 03/20
-            val winter = buildJsonBinsSeason(
-              sensor,
-              Some((current_year - 1).toString + "-12-21"),
-              Some(current_year.toString + "-03-20"),
-              current_year, p, "winter", sources
-            )
-
-            // SPRING = 03/21 - 06/20
-            val spring = buildJsonBinsSeason(
-              sensor,
-              Some(current_year.toString + "-03-21"),
-              Some(current_year.toString + "-06-20"),
-              current_year, p, "spring", sources
-            )
-
-            // SUMMER = 06/21 - 09/20
-            val summer = buildJsonBinsSeason(
-              sensor,
-              Some(current_year.toString + "-06-21"),
-              Some(current_year.toString + "-09-20"),
-              current_year, p, "summer", sources
-            )
-
-            // FALL = 09/21 - 12/20
-            val fall = buildJsonBinsSeason(
-              sensor,
-              Some(current_year.toString + "-09-21"),
-              Some(current_year.toString + "-12-20"),
-              current_year, p, "fall", sources
-            )
-
-            winter match {
-              case Some(value) => param += value
-              case None => {}
-            }
-            spring match {
-              case Some(value) => param += value
-              case None => {}
-            }
-            summer match {
-              case Some(value) => param += value
-              case None => {}
-            }
-            fall match {
-              case Some(value) => param += value
-              case None => {}
-            }
-          }
-
-          if (param.length > 0)
-            result += (p -> Json.toJson(param))
         }
         Ok(Json.obj(
           "sensor_name" -> sensor.name,
@@ -389,39 +356,29 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     JsArray(result_set.toList)
   }
 
-  private def buildJsonBinsSeason(sensor: SensorModel, since: Option[String], until: Option[String], year: Int, parameter: String, season: String, sources: List[String]): Option[JsValue] = {
-    /*
-     * full_month_start: the first month that we want all of, to get from month bins
-     * full_month_end: the last month we want all of, to get from month bins
-     * partial_month_start: if season is mid-year, what month to get the 21st - end of month from
-     * partial_month_end: what month to get the 1st - 20th from
-     * historical_month: what month to get the 21st- end of month from previous year (winter uses this)
-     */
-    var season_count = 0
-    var season_sum = 0.0
+  private def buildJsonBinsSeason(sensor: SensorModel, season: Option[String], since: Option[String], until: Option[String], parameter: String, sources: List[String], updateBins: Boolean): JsValue = {
 
-    val stats = cacheDB.getCachedBinStatsByDay(sensor, since, until, parameter, true)
-    stats.foreach(s => {
-      val (year, month, day, count, sum, avg, start_time, end_time) = s
-      season_count += count
-      season_sum += sum
-    })
+    if (updateBins)
+      cacheDB.calculateBinsBySeason(sensor.id, since, until, parameter)
 
-    val season_avg = if (season_count > 0) season_sum / season_count else 0
+    val stats_list = cacheDB.getCachedBinStatsBySeason(sensor, season, since, until, parameter, false)
 
-    if (season_count == 0) {
-      None
-    } else {
-      Some(Json.obj(
-        "count" -> season_count,
+    var result_set = ListBuffer[JsValue]()
+    stats_list.foreach(s => {
+      val (year, season, count, sum, avg, start_time, end_time) = s
+      val label = year.toString + "-" + season
+      result_set += Json.obj(
+        "count" -> count,
         // "sum" -> sum,
-        "average" -> season_avg,
+        "average" -> avg,
         "year" -> year,
         "date" -> since,
         "label" -> (year.toString + " " + season),
         "sources" -> sources
-      ))
-    }
+      )
+    })
+    JsArray(result_set.toList)
+
   }
 
   // Get trends for a parameter
@@ -523,7 +480,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     API to ingest region TABLE and region_trends TABLE.
     Require a json file that contains "areas" json like v2 config/area.js,
     and "attributes" as a list of attributes for region trends.
-    This API is build sepfical for EPA, so it has "spring" and "summer", no other 2 seasons.
+    This API is build specifically for EPA, so it has "spring" and "summer", no other 2 seasons.
     While saving regions(areas), existing ones will be omit( not update).
     "boundary" and "center_coordinate" in region TABLE is not saved now.
     so the region trends is calculated based on the input json's "areas".
@@ -596,4 +553,5 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
   def regionTrends(attribute: String, season: String) = Action {
     Ok(Json.obj("status" -> "OK", "trends" -> regionDB.getTrendsByRegion(attribute, season)))
   }
+
 }

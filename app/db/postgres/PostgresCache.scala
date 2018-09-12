@@ -2,13 +2,17 @@ package db.postgres
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
+import java.util.{ Collections, Date }
+
 import akka.actor.ActorSystem
-import db.{ Sensors, Cache }
+import db.{ Cache, Sensors }
 import javax.inject.Inject
+
 import play.api.db.Database
+
 import scala.collection.mutable.ListBuffer
 import utils.DatapointsHelper
-import models.{ SensorModel, DatapointModel }
+import models.{ DatapointModel, SensorModel }
 
 /**
  * Store aggregate statistics in cache bins to speed up retrieval.
@@ -72,6 +76,127 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       stats.close()
       st.close()
     }
+    bulk_stats
+  }
+
+  private def aggregateStatsBySeason(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, String, Int, Double, Double, Timestamp, Timestamp)] = {
+
+    sensors.getSensor(sensor_id) match {
+      case Some(sensor) => {
+        val (start_year, end_year, _, _, _, _, _, _) = DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+        var bulk_stats = List[(Int, String, Int, Double, Double, Timestamp, Timestamp)]()
+        for (current_year <- start_year to end_year) {
+          val winter = aggregateStatsBySeasonHelper(
+            sensor_id,
+            Some((current_year - 1).toString + "-12-21"),
+            Some(current_year.toString + "-03-20"),
+            parameter, "winter"
+          )
+          bulk_stats = bulk_stats ++ winter
+          // SPRING = 03/21 - 06/20
+          val spring = aggregateStatsBySeasonHelper(
+            sensor_id,
+            Some(current_year.toString + "-03-21"),
+            Some(current_year.toString + "-06-20"),
+            parameter, "spring"
+          )
+          bulk_stats = bulk_stats ++ spring
+          // SUMMER = 06/21 - 09/20
+          val summer = aggregateStatsBySeasonHelper(
+            sensor_id,
+            Some(current_year.toString + "-06-21"),
+            Some(current_year.toString + "-09-20"),
+            parameter, "summer"
+          )
+          bulk_stats = bulk_stats ++ summer
+          // FALL = 09/21 - 12/20
+          val fall = aggregateStatsBySeasonHelper(
+            sensor_id,
+            Some(current_year.toString + "-09-21"),
+            Some(current_year.toString + "-12-20"),
+            parameter, "fall"
+          )
+          bulk_stats = bulk_stats ++ fall
+        }
+        bulk_stats
+      }
+      case None => { List.empty }
+    }
+
+  }
+  private def aggregateStatsBySeasonHelper(sensor_id: Int, since: Option[String], until: Option[String], parameter: String, season: String): List[(Int, String, Int, Double, Double, Timestamp, Timestamp)] = {
+
+    var temp_stats = List[(Int, Int, Double, Double, Timestamp, Timestamp)]()
+    var bulk_stats = List[(Int, String, Int, Double, Double, Timestamp, Timestamp)]()
+    db.withConnection { conn =>
+      var query =
+        "SELECT extract(year from datapoints.start_time) as yyyy, " +
+          "             count(datapoints.data ->> ?) as count, " +
+          "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
+          "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
+          "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+          "      from datapoints, streams " +
+          "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
+      query += since.fold("")(n => " and datapoints.start_time >= ?::date")
+      query += until.fold("")(n => " and datapoints.start_time <= ?::date")
+      query += " group by 1;"
+      val st = conn.prepareStatement(query)
+
+      st.setString(1, parameter)
+      st.setString(2, parameter)
+      st.setString(3, parameter)
+      st.setInt(4, sensor_id)
+      var i = 5
+      since match {
+        case Some(n) => {
+          st.setString(i, n)
+          i += 1
+        }
+        case None => {}
+      }
+      until match {
+        case Some(n) => {
+          st.setString(i, n)
+          i += 1
+        }
+        case None => {}
+      }
+      val stats = st.executeQuery()
+
+      while (stats.next()) {
+        if (stats.getInt(3) > 0)
+          temp_stats = temp_stats :+ (
+            stats.getInt(1), // year
+            stats.getInt(2), // count
+            stats.getDouble(3), // sum
+            stats.getDouble(4), // avg
+            stats.getTimestamp(5), // start_time
+            stats.getTimestamp(6) // end_time
+          )
+      }
+      stats.close()
+      st.close()
+    }
+    if (temp_stats.length > 0) {
+      var season_count = 0
+      var season_sum = 0.0
+      var season_year = 0
+      var season_start_time: Timestamp = temp_stats.head._5
+      var season_end_time: Timestamp = temp_stats.head._6
+      temp_stats.foreach(s => {
+        val (year, count, sum, avg, start_time, end_time) = s
+        season_count += count
+        season_sum += sum
+        season_year = if (season_year > year) season_year else year
+
+        season_start_time = if (season_start_time.getTime() > start_time.getTime()) start_time else season_start_time
+        season_end_time = if (season_end_time.getTime() < end_time.getTime()) end_time else season_end_time
+
+      })
+      val season_avg = if (season_count > 0) season_sum / season_count else 0
+      bulk_stats = bulk_stats :+ (season_year, season, season_count, season_sum, season_avg, season_start_time, season_end_time)
+    }
+
     bulk_stats
   }
 
@@ -297,6 +422,57 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
             st.setTimestamp(i + 8, end_time)
             st.setTimestamp(i + 9, curr_time)
             i += 9
+          })
+          st.execute()
+          st.close()
+        }
+      }
+    }
+  }
+
+  def calculateBinsBySeason(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
+    db.withConnection { conn =>
+      val curr_time = new Timestamp(System.currentTimeMillis())
+      val stats_values = aggregateStatsBySeason(sensor_id, since, until, parameter)
+      var included_count = 0
+
+      if (stats_values.length > 0) {
+        var query = "insert into bins_season (sensor_id, yyyy, season, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
+        var first = true
+        stats_values.foreach(s => {
+          if (!first) {
+            query += ", "
+          } else {
+            first = false
+          }
+          query += "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+          included_count += 1
+        })
+
+        // Only execute query if we had any valid bins
+        if (included_count > 0) {
+          // excluded - https://stackoverflow.com/questions/34514457/bulk-insert-update-if-on-conflict-bulk-upsert-on-postgres
+          query += " on conflict (sensor_id, yyyy, season, parameter) do update " +
+            "set datapoint_count = excluded.datapoint_count, sum = excluded.sum, average = excluded.average, " +
+            "start_time = excluded.start_time, end_time = excluded.end_time, updated = excluded.updated " +
+            "where bins_season.sensor_id = excluded.sensor_id and bins_season.yyyy = excluded.yyyy and " +
+            "bins_season.season = excluded.season and bins_season.parameter = excluded.parameter;"
+
+          val st = conn.prepareStatement(query)
+          var i = 0
+          stats_values.foreach(s => {
+            val (current_year, current_season, count, sum, avg, start_time, end_time) = s
+            st.setInt(i + 1, sensor_id)
+            st.setInt(i + 2, current_year)
+            st.setString(i + 3, current_season)
+            st.setString(i + 4, parameter)
+            st.setInt(i + 5, count)
+            st.setDouble(i + 6, sum)
+            st.setDouble(i + 7, avg)
+            st.setTimestamp(i + 8, start_time)
+            st.setTimestamp(i + 9, end_time)
+            st.setTimestamp(i + 10, curr_time)
+            i += 10
           })
           st.execute()
           st.close()
@@ -558,6 +734,58 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
     }
   }
 
+  def insertIntoBinSeason(sensor: SensorModel, dp: DatapointModel, yyyy: Int, season: String, parameter: String, value: Double): Unit = {
+    db.withConnection { conn =>
+      val curr_time = new Timestamp(System.currentTimeMillis())
+      val bin_time = Some(yyyy.toString + "-" + season)
+      val existing_stats = getCachedBinStatsBySeason(sensor, Some(season), bin_time, bin_time, parameter, false)
+
+      if (existing_stats.length > 0) {
+        existing_stats.foreach(s => {
+          val (yyyy, season, count, sum, avg, start_time, end_time) = s
+          val new_count = count + 1
+          val new_sum = sum + value
+          val new_avg = new_sum / new_count
+
+          val query = "UPDATE bins_season set datapoint_count = ?, sum = ?, average = ?, updated = ?" +
+            "WHERE sensor_id = ? and yyyy =? and season = ? and parameter = ?;"
+
+          val st = conn.prepareStatement(query)
+          st.setInt(1, new_count)
+          st.setDouble(2, new_sum)
+          st.setDouble(3, new_avg)
+          st.setTimestamp(4, curr_time)
+          st.setInt(5, sensor.id)
+          st.setInt(6, yyyy)
+          st.setString(7, season)
+          st.setString(8, parameter)
+          st.execute()
+          st.close()
+        })
+      } else {
+        val query = "insert into bins_season (sensor_id, yyyy, season, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
+          "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
+        val st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setInt(2, yyyy)
+        st.setString(3, season)
+        st.setString(4, parameter)
+        st.setInt(5, 1)
+        st.setDouble(6, value)
+        st.setDouble(7, value)
+        val format = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSz")
+        st.setTimestamp(8, new Timestamp(format.parse(dp.start_time).getTime))
+        st.setTimestamp(9, dp.end_time match {
+          case Some(et) => new Timestamp(format.parse(et).getTime)
+          case None => new Timestamp(format.parse(dp.start_time).getTime)
+        })
+        st.setTimestamp(10, curr_time)
+        st.execute()
+        st.close()
+      }
+    }
+  }
+
   def insertIntoBinMonth(sensor: SensorModel, dp: DatapointModel, yyyy: Int, mm: Int, parameter: String, value: Double): Unit = {
     db.withConnection { conn =>
       val curr_time = new Timestamp(System.currentTimeMillis())
@@ -774,6 +1002,68 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
 
     if (total)
       List((-1, tot_count, tot_sum, tot_avg, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis())))
+    else
+      result
+  }
+
+  /* Fetch existing bin statistics from cache for a specific parameter.
+ *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
+ *  total -- true will return a single total for all bins requested, instead of individual bins.
+ */
+  def getCachedBinStatsBySeason(sensor: SensorModel, season: Option[String], since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, String, Int, Double, Double, Timestamp, Timestamp)] = {
+
+    var result = List[(Int, String, Int, Double, Double, Timestamp, Timestamp)]()
+    var tot_count = 0
+    var tot_sum = 0.0
+    var tot_avg = 0.0
+
+    val (start_year, end_year, start_month, end_month, start_day, end_day, start_hour, end_hour) = (since, until) match {
+      case (Some(start_time), Some(end_time)) => DatapointsHelper.parseTimeRange(start_time, end_time)
+      case (Some(start_time), None) => DatapointsHelper.parseTimeRange(start_time, sensor.max_end_time)
+      case (None, Some(end_time)) => DatapointsHelper.parseTimeRange(sensor.min_start_time, end_time)
+      case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+    }
+
+    db.withConnection { conn =>
+      var query = "select yyyy, season, datapoint_count, sum, average, start_time, end_time from bins_season " +
+        "where sensor_id = ? and parameter = ? and yyyy >= ? and yyyy <= ?"
+      season match {
+        case (Some(s)) => query += " and season = ? ;"
+        case None => query += ";"
+      }
+      val st = conn.prepareStatement(query)
+
+      st.setInt(1, sensor.id)
+      st.setString(2, parameter)
+      st.setInt(3, start_year)
+      st.setInt(4, end_year)
+
+      season match {
+        case Some(s) => st.setString(5, s)
+        case None =>
+      }
+      val stats = st.executeQuery()
+
+      while (stats.next()) {
+        tot_count += stats.getInt(3)
+        tot_sum += stats.getDouble(4)
+        tot_avg += stats.getDouble(5)
+        result = result :+ (
+          stats.getInt(1), // year
+          stats.getString(2), //season
+          stats.getInt(3), // count
+          stats.getDouble(4), // sum
+          stats.getDouble(5), // avg
+          stats.getTimestamp(6), // start_time
+          stats.getTimestamp(7) // end_time
+        )
+      }
+      stats.close()
+      st.close()
+    }
+
+    if (total)
+      List((-1, "", tot_count, tot_sum, tot_avg, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis())))
     else
       result
   }

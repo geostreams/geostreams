@@ -77,7 +77,7 @@ GET           /api/cache/year/:sensor_id                                controll
 GET           /api/cache/month/:sensor_id                               controllers.CacheController.getCachedBinStatsMonth(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
 GET           /api/cache/day/:sensor_id                                 controllers.CacheController.getCachedBinStatsDay(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
 GET           /api/cache/hour/:sensor_id                                controllers.CacheController.getCachedBinStatsHour(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
-GET           /api/cache/season/:sensor_id                              controllers.CacheController.getCachedBinStatsSeason(sensor_id: Int, updateBins: Boolean ?= false, parameter: Option[String] ?= None)
+GET           /api/cache/season/:sensor_id                              controllers.CacheController.getCachedBinStatsSeason(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None, season: Option[String] ?= None)
 GET           /api/cache/trends/year/:sensor_id                         controllers.CacheController.getTrendsForParameterYear(sensor_id: Int, since: Option[String], until: Option[String], parameter: Option[String])
 GET           /api/cache/trends/month/:sensor_id                        controllers.CacheController.getTrendsForParameterMonth(sensor_id: Int, since: Option[String], until: Option[String], parameter: Option[String])
 

@@ -240,6 +240,25 @@ CREATE TABLE bins_hour (
 
 ALTER TABLE bins_hour OWNER TO clowder;
 
+-- Name: bins_season; Type: TABLE; Schema: public; Owner: clowder
+--
+
+CREATE TABLE bins_season (
+  sensor_id integer NOT NULL,
+  yyyy integer,
+  season character varying(10),
+  parameter character varying(255),
+  datapoint_count integer,
+  sum float8,
+  average float8,
+  start_time timestamp with time zone,
+  end_time timestamp with time zone,
+  updated timestamp with time zone,
+  PRIMARY KEY (sensor_id, yyyy, season, parameter)
+);
+
+
+ALTER TABLE bins_season OWNER TO clowder;
 
 --
 -- Name: gid; Type: DEFAULT; Schema: public; Owner: clowder

@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [GEOD-895](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-895)
 - Add endpoint to delete a set of streams 
   [GEOD-1057](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1057)
- 
+- Storing bins in SQL tables for year, season, month, day, hour
+  [GEOD_1082](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1082)
+  [GEOD-1133](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1133)
  
 ### Changed
 - Changed header and email title
