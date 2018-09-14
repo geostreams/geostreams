@@ -310,4 +310,34 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
       st.close()
     }
   }
+
+  def getSensorsBySource(source: String): List[SensorModel] = {
+    db.withConnection { conn =>
+      val query = "WITH stream_info AS (" +
+        "SELECT sensor_id, start_time, end_time, unnest(params) AS param FROM streams" +
+        ") " +
+        "SELECT row_to_json(t, true) FROM (" +
+        "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
+        "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
+        "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS max_end_time, " +
+        "array_agg(distinct stream_info.param) as parameters " +
+        "FROM sensors " +
+        "LEFT OUTER JOIN stream_info ON stream_info.sensor_id = sensors.gid WHERE " +
+        " sensors.metadata ->'type'->>'id' = ? " +
+        " GROUP BY id ORDER BY name) as t ;"
+
+      val st = conn.prepareStatement(query)
+      st.setString(1, source)
+      val rs = st.executeQuery()
+      val sensors = ListBuffer.empty[SensorModel]
+      while (rs.next()) {
+        val data = rs.getString(1)
+        sensors += Json.parse(data).as[SensorModel]
+      }
+      rs.close()
+      st.close()
+      sensors.toList
+    }
+  }
 }

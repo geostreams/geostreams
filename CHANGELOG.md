@@ -25,7 +25,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Storing bins in SQL tables for year, season, month, day, hour
   [GEOD_1082](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1082)
   [GEOD-1133](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1133)
- 
+- Implementing trends by station per season using a source. 
+  [GEOD-1134](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1134)
+  
 ### Changed
 - Changed header and email title
 - Changed most controllers from cookie authenticator to BearerToken authenticator. HomeController still uses Cookie authenticator

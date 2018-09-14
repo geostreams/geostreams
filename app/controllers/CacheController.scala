@@ -554,4 +554,62 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     Ok(Json.obj("status" -> "OK", "trends" -> regionDB.getTrendsByRegion(attribute, season)))
   }
 
+  def getTrendsForParameter(parameter: String, season: Option[String], source: Option[String]) = Action {
+
+    val sensors = source match {
+      case Some(the_source) => sensorDB.getSensorsBySource(the_source)
+      case None => sensorDB.searchSensors(None, None)
+    }
+
+    var sensor_trends = new ListBuffer[JsObject]()
+    sensors.map(sensor => {
+      val min_start_time = new DateTime(sensor.min_start_time)
+      var last_year = min_start_time.getYear()
+      val max_end_time = new DateTime(sensor.max_end_time)
+      var first_year = max_end_time.getYear()
+      var last_average = 0.0
+      val allbins = cacheDB.getCachedBinStatsBySeason(sensor, season, None, None, parameter, false)
+      var total_count = 0.0
+      var total_sum = 0.0
+      var last10_count = 0.0
+      var last10_sum = 0.0
+      allbins.map(bin => {
+        val (year, season, count, sum, avg, start_time, end_time) = bin
+        total_count += count
+        total_sum += sum
+        last_year = if (year > last_year) year else last_year
+        first_year = if (first_year > year) year else first_year
+      })
+
+      val last_10_bins = allbins.filter(d => d._1 > last_year - 9)
+      last_10_bins.map(bin => {
+        val (year, season, count, sum, avg, start_time, end_time) = bin
+        last10_count += count
+        last10_sum += sum
+        if (year == last_year) {
+          last_average = avg
+        }
+      })
+      val avg_10 = if (last10_count > 0) last10_sum / last10_count else Double.NaN
+      val total_avg = if (total_count > 0) total_sum / total_count else Double.NaN
+      val percentage_change = if (last_year - first_year >= 10) (avg_10 - total_avg) / total_avg * 100 else Double.NaN
+      last_average = if (total_count > 0) last_average else Double.NaN
+
+      val sensor_trend = Json.obj(
+        "sensor_id" -> sensor.id,
+        "sensor" -> sensor,
+        "last_time" -> last_year,
+        "first_year" -> first_year,
+        "diff" -> (last_year - first_year),
+        "properties" -> Json.obj(
+          "interval_average" -> avg_10.toString(),
+          "total_average" -> total_avg.toString(),
+          "last_average" -> last_average.toString(),
+          "percentage_change" -> percentage_change.toString()
+        )
+      )
+      sensor_trends.append(sensor_trend)
+    })
+    Ok(Json.obj("status" -> "OK", "trends" -> Json.toJson(sensor_trends)))
+  }
 }
