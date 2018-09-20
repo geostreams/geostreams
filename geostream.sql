@@ -447,6 +447,8 @@ CREATE TABLE events (
 ALTER TABLE events OWNER TO clowder;
 
 
+-- need to be postgres user to do this
+-- can list casts with \dC
 create or replace function cast_to_double(text) returns DOUBLE PRECISION as $$
 begin
   -- Note the double casting to avoid infinite recursion.

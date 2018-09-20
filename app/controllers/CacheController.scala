@@ -75,7 +75,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     var year = yyyy
     if ((mm == 12 && dd >= 21) || (mm <= 3 && dd <= 20)) {
       season = "winter"
-      if(mm == 12) {
+      if (mm == 12) {
         year += 1
       }
     } else if ((mm == 3 && dd >= 21) || mm == 4 || mm == 5 || (mm == 6 && dd <= 20)) {
@@ -561,7 +561,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
       case None => sensorDB.searchSensors(None, None)
     }
 
-    var sensor_trends = new ListBuffer[JsObject]()
+    val sensor_trends = new ListBuffer[JsObject]()
     sensors.map(sensor => {
       val min_start_time = new DateTime(sensor.min_start_time)
       var last_year = min_start_time.getYear()
@@ -612,4 +612,69 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     })
     Ok(Json.obj("status" -> "OK", "trends" -> Json.toJson(sensor_trends)))
   }
+
+  def getExploratoryTrends(parameter: String, rolling_years: Int, baseline_years: Int, sensor_id: List[Int]) = Action {
+
+    val sensors = sensorDB.getSensors(sensor_id.toArray[Int])
+
+    val sensor_trends = new ListBuffer[JsObject]()
+    sensors.map(sensor => {
+      print(sensor.id)
+      val min_start_time = new DateTime(sensor.min_start_time)
+      var last_year = min_start_time.getYear()
+      val max_end_time = new DateTime(sensor.max_end_time)
+      var first_year = max_end_time.getYear()
+      var last_average = 0.0
+      val allbins = cacheDB.getCachedBinStatsByYear(sensor, None, None, parameter, false)
+
+      allbins.map(bin => {
+        val (year, count, sum, avg, start_time, end_time) = bin
+        last_year = if (year > last_year) year else last_year
+        first_year = if (first_year > year) year else first_year
+      })
+
+      var baseline_count = 0.0
+      var baseline_sum = 0.0
+      var rolling_count = 0.0
+      var rolling_sum = 0.0
+
+      val baseline_bins = allbins.filter(d => d._1 > last_year - baseline_years)
+      baseline_bins.map(bin => {
+        val (year, count, sum, avg, start_time, end_time) = bin
+        baseline_count += count
+        baseline_sum += sum
+        if (year > last_year - rolling_years) {
+          rolling_count += count
+          rolling_sum += sum
+        }
+        if (year == last_year) {
+          last_average = avg
+        }
+      })
+      val rolling_avg = if (rolling_count > 0) rolling_sum / rolling_count else Double.NaN
+      val baseline_avg = if (baseline_count > 0) baseline_sum / baseline_count else Double.NaN
+      val percentage_change = if (last_year - first_year >= 1) (rolling_avg - baseline_avg) / baseline_avg * 100 else Double.NaN
+      last_average = if (baseline_count > 0) last_average else Double.NaN
+
+      val sensor_trend = Json.obj(
+        "sensor_id" -> sensor.id,
+        "sensor" -> sensor,
+        "last_time" -> last_year,
+        "first_year" -> first_year,
+        "diff" -> (last_year - first_year),
+        "properties" -> Json.obj(
+          "interval_average" -> rolling_avg.toString(),
+          "total_average" -> baseline_avg.toString(),
+          "last_average" -> last_average.toString(),
+          "percentage_change" -> percentage_change.toString()
+        )
+      )
+      sensor_trends.append(sensor_trend)
+    })
+    if (sensor_trends.size > 0)
+      Ok(Json.obj("status" -> "OK", "trends" -> Json.toJson(sensor_trends)))
+    else
+      Ok(Json.obj("status" -> "KO", "trends" -> Json.toJson(sensor_trends)))
+  }
+
 }

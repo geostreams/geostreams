@@ -2,20 +2,20 @@ package controllers
 
 import com.mohiva.play.silhouette.api.Silhouette
 import db._
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 import models.DatapointModel
 import org.joda.time.DateTime
 import play.api.i18n._
-import play.api.libs.iteratee.{Enumeratee, Enumerator}
+import play.api.libs.iteratee.{ Enumeratee, Enumerator }
 import play.api.libs.json.Json._
 import play.api.libs.json._
 import play.api.mvc.Action
-import play.api.{Configuration, Logger}
+import play.api.{ Configuration, Logger }
 import play.filters.gzip.Gzip
 import utils.DatapointsHelper.timeBins
 import utils.silhouette._
-import utils.{BinHelper, DatapointsHelper, JsonConvert, Parsers}
-import views.html.{auth => viewsAuth}
+import utils.{ BinHelper, DatapointsHelper, JsonConvert, Parsers }
+import views.html.{ auth => viewsAuth }
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global

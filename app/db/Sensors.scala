@@ -12,6 +12,7 @@ import play.api.libs.json.{ JsObject, JsValue }
 trait Sensors {
   def createSensor(sensor: SensorModel): Int
   def getSensor(id: Int): Option[SensorModel]
+  def getSensors(ids: Array[Int]): List[SensorModel]
   def getSensorSources(id: Int, parameter: String): List[String]
   def updateSensorMetadata(id: Int, update: JsObject): JsValue
   def getSensorStats(id: Int): JsValue

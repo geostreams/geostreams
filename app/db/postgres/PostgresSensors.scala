@@ -91,6 +91,38 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
     }
   }
 
+  def getSensors(ids: Array[Int]): List[SensorModel] = {
+    db.withConnection { conn =>
+      val idsArray = conn.createArrayOf("NUMERIC", ids.toArray[Any].asInstanceOf[Array[AnyRef]])
+      // TODO store start time, end time and parameter list in the row and update them when the update sensor endpoint is called.
+      // Then simplify this query to not calculate them on the fly.
+      val query = "WITH stream_info AS (" +
+        "SELECT sensor_id, start_time, end_time, unnest(params) AS param FROM streams WHERE sensor_id = ANY(?))" +
+        "SELECT row_to_json(t, true) AS my_sensor FROM (" +
+        "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
+        "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
+        "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') as max_end_time, " +
+        "array_agg(distinct stream_info.param) as parameters " +
+        "FROM sensors " +
+        "LEFT OUTER JOIN stream_info ON stream_info.sensor_id = sensors.gid " +
+        "WHERE sensors.gid = ANY(?) " +
+        "GROUP BY gid) AS t"
+      val st = conn.prepareStatement(query)
+      st.setArray(1, idsArray)
+      st.setArray(2, idsArray)
+      val rs = st.executeQuery()
+      val sensors = ListBuffer.empty[SensorModel]
+      while (rs.next()) {
+        val data = rs.getString(1)
+        sensors += Json.parse(data).as[SensorModel]
+      }
+      rs.close()
+      st.close()
+      sensors.toList
+    }
+  }
+
   def updateSensorMetadata(id: Int, update: JsObject): JsValue = {
     // connection will be closed at the end of the block
     db.withTransaction { conn =>

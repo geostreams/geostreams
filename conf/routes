@@ -81,6 +81,7 @@ GET           /api/cache/season/:sensor_id                              controll
 GET           /api/cache/trends/year/:sensor_id                         controllers.CacheController.getTrendsForParameterYear(sensor_id: Int, since: Option[String], until: Option[String], parameter: Option[String])
 GET           /api/cache/trends/month/:sensor_id                        controllers.CacheController.getTrendsForParameterMonth(sensor_id: Int, since: Option[String], until: Option[String], parameter: Option[String])
 GET           /api/cache/trends                                         controllers.CacheController.getTrendsForParameter(parameter: String, season: Option[String], source: Option[String])
+GET           /api/cache/analysis                                       controllers.CacheController.getExploratoryTrends(parameter: String, rolling_years: Int, baseline_years: Int, sensor_id: List[Int])
 
 # Admin
 DELETE        /api/dropall                                              controllers.AdminController.deleteAll

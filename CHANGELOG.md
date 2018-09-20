@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [GEOD-1133](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1133)
 - Implementing trends by station per season using a source. 
   [GEOD-1134](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1134)
+- Added endpoint for analysis trends
+  [GEOD-1062](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1062)
   
 ### Changed
 - Changed header and email title

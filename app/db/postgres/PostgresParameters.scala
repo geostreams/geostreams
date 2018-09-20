@@ -13,11 +13,11 @@ import scala.collection.mutable.ListBuffer
 class PostgresParameters @Inject() (db: Database) extends Parameters {
 
   /**
-    * Creates a parameter in the database.
-    *
-    * @param parameter
-    * @return the created parameter that includes the generated id
-    */
+   * Creates a parameter in the database.
+   *
+   * @param parameter
+   * @return the created parameter that includes the generated id
+   */
   override def createParameter(parameter: ParameterModel): ParameterModel = {
     var created_parameter: Option[ParameterModel] = None
     db.withConnection { conn =>
@@ -50,10 +50,10 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Updates all fields of a parameter given a model
-    *
-    * @param parameter
-    */
+   * Updates all fields of a parameter given a model
+   *
+   * @param parameter
+   */
   override def updateParameter(parameter: ParameterModel): Unit = {
     var updated_parameter: Option[ParameterModel] = None
     db.withConnection { conn =>
@@ -75,11 +75,11 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Deletes all paraeter_categories mappings in the database given an id and then
-    * removes the parameter from parameters table
-    *
-    * @param id of the parameter
-    */
+   * Deletes all paraeter_categories mappings in the database given an id and then
+   * removes the parameter from parameters table
+   *
+   * @param id of the parameter
+   */
   override def deleteParameter(id: Int): Unit = {
     db.withConnection { conn =>
 
@@ -93,11 +93,11 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Finds a parameter given the short name
-    *
-    * @param name
-    * @return the parameter if found in the database, None if it is not found
-    */
+   * Finds a parameter given the short name
+   *
+   * @param name
+   * @return the parameter if found in the database, None if it is not found
+   */
   override def getParameterByName(name: String): Option[ParameterModel] = {
     var parameter: Option[ParameterModel] = None
     db.withConnection { conn =>
@@ -121,11 +121,11 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Gets a parameter given its id
-    *
-    * @param id
-    * @return  Some(ParameterModel) if it is found, None if it isn't.
-    */
+   * Gets a parameter given its id
+   *
+   * @param id
+   * @return  Some(ParameterModel) if it is found, None if it isn't.
+   */
   override def getParameter(id: Int): Option[ParameterModel] = {
     var parameter: Option[ParameterModel] = None
     db.withConnection { conn =>
@@ -149,10 +149,10 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Gets all parameters available in the database
-    *
-    * @return all parameters in the parameters table.
-    */
+   * Gets all parameters available in the database
+   *
+   * @return all parameters in the parameters table.
+   */
   override def getAllParameters(): List[ParameterModel] = {
     var parameters: ListBuffer[ParameterModel] = ListBuffer()
 
@@ -175,12 +175,12 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Finds a category by name and type
-    *
-    * @param name of the category
-    * @param detail_type of the category
-    * @return Some[CategoryModel] if found, None if it isn't
-    */
+   * Finds a category by name and type
+   *
+   * @param name of the category
+   * @param detail_type of the category
+   * @return Some[CategoryModel] if found, None if it isn't
+   */
   override def getCategoryNameAndType(name: String, detail_type: String): Option[CategoryModel] = {
     var category: Option[CategoryModel] = None
     db.withConnection { conn =>
@@ -205,11 +205,11 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Adds a categpry to the database
-    *
-    * @param category
-    * @return The newly created category including the id
-    */
+   * Adds a categpry to the database
+   *
+   * @param category
+   * @return The newly created category including the id
+   */
   override def addCategory(category: CategoryModel): CategoryModel = {
     var created_category: Option[CategoryModel] = None
 
@@ -235,10 +235,10 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Gets all categories in the categories table in the database
-    *
-    * @return a List of Category Models.
-    */
+   * Gets all categories in the categories table in the database
+   *
+   * @return a List of Category Models.
+   */
   override def getAllCategories(): List[CategoryModel] = {
     var categories: ListBuffer[CategoryModel] = ListBuffer()
 
@@ -261,11 +261,11 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Adds a mapping between a parameter and a category
-    *
-    * @param mapping
-    * @return The newly created mapping with id
-    */
+   * Adds a mapping between a parameter and a category
+   *
+   * @param mapping
+   * @return The newly created mapping with id
+   */
   override def addMapping(mapping: CategoryParameterMapping): CategoryParameterMapping = {
     var created_mapping: Option[CategoryParameterMapping] = None
     db.withConnection { conn =>
@@ -291,11 +291,11 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Gets all mappings associated with a parameter Id
-    *
-    * @param parameterId
-    * @return a List of mappings for the given parameter Id
-    */
+   * Gets all mappings associated with a parameter Id
+   *
+   * @param parameterId
+   * @return a List of mappings for the given parameter Id
+   */
   override def getMappingByParameterId(parameterId: Int): List[CategoryParameterMapping] = {
     var mappings: ListBuffer[CategoryParameterMapping] = ListBuffer()
 
@@ -316,10 +316,10 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-    * Gets all category parameter mappings
-    *
-    * @return The list of all the mappings in parameter_categories table in the database
-    */
+   * Gets all category parameter mappings
+   *
+   * @return The list of all the mappings in parameter_categories table in the database
+   */
   override def getAllCategoryParameterMappings(): List[CategoryParameterMapping] = {
     var mappings: ListBuffer[CategoryParameterMapping] = ListBuffer()
 
