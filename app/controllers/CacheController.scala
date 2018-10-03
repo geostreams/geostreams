@@ -372,7 +372,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
         // "sum" -> sum,
         "average" -> avg,
         "year" -> year,
-        "date" -> since,
+        "date" -> start_time.toLocalDateTime,
         "label" -> (year.toString + " " + season),
         "sources" -> sources
       )
