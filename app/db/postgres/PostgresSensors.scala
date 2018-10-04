@@ -41,23 +41,25 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
   }
 
   // TODO: Should these be included in the bin cache?
+  // TODO: Commented this method to check if it improves performance. Make sure to add alternate way to return sources for sensor
   def getSensorSources(id: Int, parameter: String): List[String] = {
-    db.withConnection { conn =>
-      val query = "SELECT distinct(datapoints.data->>'source') FROM datapoints, streams where " +
-        " datapoints.stream_id = streams.gid AND streams.sensor_id = ? AND datapoints.data ?? ?"
-      val st = conn.prepareStatement(query)
-      st.setInt(1, id)
-      st.setString(2, parameter)
-      val rs = st.executeQuery()
-      var sources: ListBuffer[String] = ListBuffer.empty[String]
-      while (rs.next()) {
-        val data = rs.getString(1)
-        sources += data
-      }
-      rs.close()
-      st.close()
-      sources.toList
-    }
+    //    db.withConnection { conn =>
+    //      val query = "SELECT distinct(datapoints.data->>'source') FROM datapoints, streams where " +
+    //        " datapoints.stream_id = streams.gid AND streams.sensor_id = ? AND datapoints.data ?? ?"
+    //      val st = conn.prepareStatement(query)
+    //      st.setInt(1, id)
+    //      st.setString(2, parameter)
+    //      val rs = st.executeQuery()
+    //      var sources: ListBuffer[String] = ListBuffer.empty[String]
+    //      while (rs.next()) {
+    //        val data = rs.getString(1)
+    //        sources += data
+    //      }
+    //      rs.close()
+    //      st.close()
+    //      sources.toList
+    //    }
+    List.empty
   }
 
   def getSensor(id: Int): Option[SensorModel] = {
