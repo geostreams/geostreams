@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [GEOD-1108](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1108)  
 - Changed binning methods to be compatible with the front-end 
   [GEOD-1118](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1118)
+- Move binning by season creation to a separate endpoint 
+  [GEOD-1153](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1153)
  
 ### Fixed 
 - Out of memory error when user requests large downloads

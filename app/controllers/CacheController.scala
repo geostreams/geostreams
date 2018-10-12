@@ -35,16 +35,12 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
   def calculateBins(sensor_id: Option[Int], since: Option[String], until: Option[String], parameter: Option[String]) = SecuredAction(WithService("master")) {
     sensor_id match {
       case Some(sid) => {
-        Logger.debug("Creating or updating all bins for sensor_id " + sid)
+        Logger.info("Creating or updating all bins for sensor_id " + sid)
         sensorDB.getSensor(sid) match {
           case Some(sensor) => {
             val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
             for (p <- sensorObjectParameters) {
-              cacheDB.calculateBinsByHour(sensor.id, since, until, p)
-              cacheDB.calculateBinsByDay(sensor.id, since, until, p)
-              cacheDB.calculateBinsByMonth(sensor.id, since, until, p)
-              cacheDB.calculateBinsByYear(sensor.id, since, until, p)
-              cacheDB.calculateBinsBySeason(sensor.id, since, until, p)
+              calculateBinsHelper(sensor.id, since, until, p)
             }
             Ok(Json.obj("status" -> "OK"))
           }
@@ -57,17 +53,80 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
         allSensors.foreach(sensor => {
           val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
           for (p <- sensorObjectParameters) {
-            cacheDB.calculateBinsByHour(sensor.id, since, until, p)
-            cacheDB.calculateBinsByDay(sensor.id, since, until, p)
-            cacheDB.calculateBinsByMonth(sensor.id, since, until, p)
-            cacheDB.calculateBinsByYear(sensor.id, since, until, p)
-            cacheDB.calculateBinsBySeason(sensor.id, since, until, p)
+            calculateBinsHelper(sensor.id, since, until, p)
           }
         })
 
         Ok(Json.obj("status" -> "OK", "sensors" -> allSensors.length.toString))
       }
     }
+  }
+
+  def calculateBinsHelper(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
+    val time_before_bins_hour = System.currentTimeMillis()
+    cacheDB.calculateBinsByHour(sensor_id, since, until, parameter)
+    val time_after_bins_hour, time_before_bins_day = System.currentTimeMillis()
+    cacheDB.calculateBinsByDay(sensor_id, since, until, parameter)
+    val time_after_bins_day, time_before_bins_month = System.currentTimeMillis()
+    cacheDB.calculateBinsByMonth(sensor_id, since, until, parameter)
+    val time_after_bins_month, time_before_bins_year = System.currentTimeMillis()
+    cacheDB.calculateBinsByYear(sensor_id, since, until, parameter)
+    val time_after_bins_year = System.currentTimeMillis()
+    Logger.info(sensor_id + ", " + parameter + ", " + (time_after_bins_hour - time_before_bins_hour) + ", "
+      + (time_after_bins_day - time_before_bins_day) + ", " + (time_after_bins_month - time_before_bins_month)
+      + ", " + (time_after_bins_year - time_before_bins_year))
+
+  }
+  /*
+   * Calculate bin values for seasons and create or overwrite entries in bin cache tables.
+   *  sensor_id -- if not specified, all sensors will be generated
+   *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
+   *  parameters -- if not specified, all parameters will be generated
+   */
+  def calculateBinsBySeason(sensor_id: Option[Int], since: Option[String], until: Option[String], parameter: List[String]) = SecuredAction(WithService("master")) {
+
+    sensor_id match {
+      case Some(sid) => {
+        Logger.debug("Creating or updating all bins for sensor_id " + sid)
+        sensorDB.getSensor(sid) match {
+          case Some(sensor) => {
+            var parameters = parameter
+            if (parameters.length == 0) {
+              parameters = sensor.parameters
+            }
+            val sensorObjectParameters = filterParameters(parameters, None)
+            for (p <- sensorObjectParameters) {
+              calculateSeasonBinsHelper(sensor.id, since, until, p)
+            }
+            Ok(Json.obj("status" -> "OK"))
+          }
+          case None => BadRequest(Json.obj("status" -> "sensor not found"))
+        }
+      }
+      case None => {
+        val allSensors = sensorDB.searchSensors(None, None)
+        Logger.debug("updating " + allSensors.length.toString + " sensors")
+        allSensors.foreach(sensor => {
+          var parameters = parameter
+          if (parameters.length == 0) {
+            parameters = sensor.parameters
+          }
+          val sensorObjectParameters = filterParameters(parameters, None)
+          for (p <- sensorObjectParameters) {
+           calculateSeasonBinsHelper(sensor.id, since, until, p)
+          }
+        })
+        Ok(Json.obj("status" -> "OK", "sensors" -> allSensors.length.toString))
+      }
+    }
+
+  }
+
+  def calculateSeasonBinsHelper(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
+    val time_before_bins_season = System.currentTimeMillis()
+    cacheDB.calculateBinsBySeason(sensor_id, since, until, parameter)
+    val time_after_bins_season = System.currentTimeMillis()
+    Logger.info(sensor_id + ", " + parameter + ", " + (time_after_bins_season - time_before_bins_season))
   }
 
   def getSeason(yyyy: Int, mm: Int, dd: Int): (Int, String) = {
