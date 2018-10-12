@@ -85,7 +85,7 @@ GET           /api/cache/analysis                                       controll
 
 # Admin
 DELETE        /api/dropall                                              controllers.AdminController.deleteAll
-GET           /api/counts                                               controllers.AdminController.counts
+GET           /api/counts                                               controllers.AdminController.counts(sensor_id: Option[Int]?= None)
 GET           /api/config                                               controllers.AdminController.getConfig
 
 # Testing postgres connection

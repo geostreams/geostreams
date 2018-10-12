@@ -19,4 +19,5 @@ trait Datapoints {
     source: List[String], attributes: List[String], sortByStation: Boolean): List[JsObject]
   def deleteDatapoint(id: Int): Unit
   def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String])
+  def getCount(sensor_id: Option[Int]): Int
 }

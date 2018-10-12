@@ -297,4 +297,31 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors, actSys: Acto
       case None => obj
     }
   }
+
+  def getCount(sensor_id: Option[Int]): Int = {
+    var output = 0
+    db.withConnection { conn =>
+      var query = "SELECT COUNT(*) FROM datapoints"
+      sensor_id match {
+        case Some(id) => {
+          query += " WHERE stream_id IN (SELECT gid FROM streams WHERE sensor_id = ?)"
+        }
+        case None =>
+      }
+      val st = conn.prepareStatement(query)
+      sensor_id match {
+        case Some(id) => {
+          st.setInt(1, id)
+        }
+        case None =>
+      }
+      val rs = st.executeQuery()
+      while (rs.next()) {
+        output = rs.getInt(1)
+      }
+      rs.close()
+      st.close()
+    }
+    output
+  }
 }

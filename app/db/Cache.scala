@@ -40,4 +40,14 @@ trait Cache {
 
   def getCachedBinStatsByHour(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]
 
+  def getCountBinsByYear(sensor_id: Option[Int]): Int
+
+  def getCountBinsBySeason(sensor_id: Option[Int]): Int
+
+  def getCountBinsByMonth(sensor_id: Option[Int]): Int
+
+  def getCountBinsByDay(sensor_id: Option[Int]): Int
+
+  def getCountBinsByHour(sensor_id: Option[Int]): Int
+
 }

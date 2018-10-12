@@ -1326,4 +1326,139 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
       result
   }
 
+  def getCountBinsByYear(sensor_id: Option[Int]): Int = {
+    var output = 0
+    db.withConnection { conn =>
+      var query = "SELECT COUNT(*) FROM bins_year"
+      sensor_id match {
+        case Some(id) => {
+          query += " WHERE sensor_id = ?"
+        }
+        case None =>
+      }
+      val st = conn.prepareStatement(query)
+      sensor_id match {
+        case Some(id) => {
+          st.setInt(1, id)
+        }
+        case None =>
+      }
+      val rs = st.executeQuery()
+      while (rs.next()) {
+        output = rs.getInt(1)
+      }
+      rs.close()
+      st.close()
+    }
+    output
+  }
+
+  def getCountBinsBySeason(sensor_id: Option[Int]): Int = {
+    var output = 0
+    db.withConnection { conn =>
+      var query = "SELECT COUNT(*) FROM bins_season"
+      sensor_id match {
+        case Some(id) => {
+          query += " WHERE sensor_id = ?"
+        }
+        case None =>
+      }
+      val st = conn.prepareStatement(query)
+      sensor_id match {
+        case Some(id) => {
+          st.setInt(1, id)
+        }
+        case None =>
+      }
+      val rs = st.executeQuery()
+      while (rs.next()) {
+        output = rs.getInt(1)
+      }
+      rs.close()
+      st.close()
+    }
+    output
+  }
+
+  def getCountBinsByMonth(sensor_id: Option[Int]): Int = {
+    var output = 0
+    db.withConnection { conn =>
+      var query = "SELECT COUNT(*) FROM bins_month"
+      sensor_id match {
+        case Some(id) => {
+          query += " WHERE sensor_id = ?"
+        }
+        case None =>
+      }
+      val st = conn.prepareStatement(query)
+      sensor_id match {
+        case Some(id) => {
+          st.setInt(1, id)
+        }
+        case None =>
+      }
+      val rs = st.executeQuery()
+      while (rs.next()) {
+        output = rs.getInt(1)
+      }
+      rs.close()
+      st.close()
+    }
+    output
+  }
+
+  def getCountBinsByDay(sensor_id: Option[Int]): Int = {
+    var output = 0
+    db.withConnection { conn =>
+      var query = "SELECT COUNT(*) FROM bins_day"
+      sensor_id match {
+        case Some(id) => {
+          query += " WHERE sensor_id = ?"
+        }
+        case None =>
+      }
+      val st = conn.prepareStatement(query)
+      sensor_id match {
+        case Some(id) => {
+          st.setInt(1, id)
+        }
+        case None =>
+      }
+      val rs = st.executeQuery()
+      while (rs.next()) {
+        output = rs.getInt(1)
+      }
+      rs.close()
+      st.close()
+    }
+    output
+  }
+
+  def getCountBinsByHour(sensor_id: Option[Int]): Int = {
+    var output = 0
+    db.withConnection { conn =>
+      var query = "SELECT COUNT(*) FROM bins_hour"
+      sensor_id match {
+        case Some(id) => {
+          query += " WHERE sensor_id = ?"
+        }
+        case None =>
+      }
+      val st = conn.prepareStatement(query)
+      sensor_id match {
+        case Some(id) => {
+          st.setInt(1, id)
+        }
+        case None =>
+      }
+      val rs = st.executeQuery()
+      while (rs.next()) {
+        output = rs.getInt(1)
+      }
+      rs.close()
+      st.close()
+    }
+    output
+  }
+
 }

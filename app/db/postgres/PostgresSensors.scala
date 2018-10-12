@@ -374,4 +374,32 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
       sensors.toList
     }
   }
+
+  def getCount(sensor_id: Option[Int]): Int = {
+    var output = 0
+    db.withConnection { conn =>
+      var query = "SELECT COUNT(*) FROM sensors"
+      sensor_id match {
+        case Some(id) => {
+          query += " WHERE gid = ?"
+        }
+        case None =>
+      }
+      val st = conn.prepareStatement(query)
+      sensor_id match {
+        case Some(id) => {
+          st.setInt(1, id)
+        }
+        case None =>
+      }
+      val rs = st.executeQuery()
+      while (rs.next()) {
+        output = rs.getInt(1)
+      }
+      rs.close()
+      st.close()
+    }
+    output
+  }
+
 }

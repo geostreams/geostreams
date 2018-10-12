@@ -23,4 +23,5 @@ trait Sensors {
   def deleteSensor(id: Int): Unit
   // used in other db.
   def updateEmptyStats()
+  def getCount(sensor_id: Option[Int]): Int
 }

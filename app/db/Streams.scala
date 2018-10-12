@@ -18,4 +18,5 @@ trait Streams {
   def getBinForStream(time: String, stream_id: Int): List[JsValue]
   def deleteStream(id: Int): Unit
   def deleteStreams(start: Int, end: Int): Unit
+  def getCount(sensor_id: Option[Int]): Int
 }
