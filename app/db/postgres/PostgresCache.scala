@@ -854,7 +854,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           val new_sum = sum + value
           val new_avg = new_sum / new_count
 
-          val query = "update bins_month set datapoint_count = ?, sum = ?, average = ?, updated = ? " +
+          val query = "update bins_day set datapoint_count = ?, sum = ?, average = ?, updated = ? " +
             "where sensor_id = ? and yyyy = ? and and mm = ? and dd = ? and parameter = ?;"
           val st = conn.prepareStatement(query)
           st.setInt(1, new_count)
@@ -872,7 +872,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
 
       } else {
         // Need to create a new bin
-        val query = "insert into bins_month (sensor_id, yyyy, mm, dd, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
+        val query = "insert into bins_day (sensor_id, yyyy, mm, dd, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
           "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
         val st = conn.prepareStatement(query)
         st.setInt(1, sensor.id)
@@ -910,7 +910,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
           val new_sum = sum + value
           val new_avg = new_sum / new_count
 
-          val query = "update bins_month set datapoint_count = ?, sum = ?, average = ?, updated = ? " +
+          val query = "update bins_hour set datapoint_count = ?, sum = ?, average = ?, updated = ? " +
             "where sensor_id = ? and yyyy = ? and and mm = ? and dd = ? and hh = ? and parameter = ?;"
           val st = conn.prepareStatement(query)
           st.setInt(1, new_count)
@@ -929,7 +929,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, actSys: ActorSyst
 
       } else {
         // Need to create a new bin
-        val query = "insert into bins_month (sensor_id, yyyy, mm, dd, hh, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
+        val query = "insert into bins_hour (sensor_id, yyyy, mm, dd, hh, parameter, datapoint_count, sum, average, start_time, end_time, updated) " +
           "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
         val st = conn.prepareStatement(query)
         st.setInt(1, sensor.id)
