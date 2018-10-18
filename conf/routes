@@ -73,7 +73,7 @@ DELETE        /api/parameters/:id                                       controll
 
 # Cache
 POST          /api/cache                                                controllers.CacheController.calculateBins(sensor_id: Option[Int] ?= None, since: Option[String], until: Option[String], parameter: Option[String] ?= None)
-POST          /api/cache/season                                         controllers.CacheController.calculateBinsBySeason(sensor_id: Option[Int] ?= None, since: Option[String], until: Option[String], parameter: List[String] ?= None)
+POST          /api/cache/season                                         controllers.CacheController.calculateBinsBySeason(sensor_id: Option[Int] ?= None, since: Option[String], until: Option[String], parameter: List[String] ?= List.empty)
 GET           /api/cache/year/:sensor_id                                controllers.CacheController.getCachedBinStatsYear(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
 GET           /api/cache/month/:sensor_id                               controllers.CacheController.getCachedBinStatsMonth(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
 GET           /api/cache/day/:sensor_id                                 controllers.CacheController.getCachedBinStatsDay(sensor_id: Int, since: Option[String], until: Option[String], updateBins: Boolean ?= false, parameter: Option[String] ?= None)
