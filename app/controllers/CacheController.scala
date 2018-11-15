@@ -2,15 +2,18 @@ package controllers
 
 import java.sql.Timestamp
 import java.text.DateFormatSymbols
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 import com.mohiva.play.silhouette.api.Silhouette
 import db._
 import javax.inject.{ Inject, Singleton }
+
 import models.{ RegionModel, SensorModel }
 import org.joda.time.DateTime
 import play.api.{ Configuration, Logger }
 import play.api.i18n.{ I18nSupport, MessagesApi }
-import play.api.libs.json.{ JsError, JsObject, JsValue, JsArray, Json }
+import play.api.libs.json.{ JsArray, JsError, JsObject, JsValue, Json }
 import play.api.mvc.{ Action, Controller }
 import utils.Parsers
 import utils.DatapointsHelper
@@ -63,6 +66,8 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
   }
 
   def calculateBinsHelper(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
+    Logger.info("START: Binning for sensor_id " + sensor_id + ", " + parameter + ", " +
+      LocalDateTime.now.format(DateTimeFormatter.ofPattern("YYYY/MM/dd_HH:mm:ss")))
     val time_before_bins_hour = System.currentTimeMillis()
     cacheDB.calculateBinsByHour(sensor_id, since, until, parameter)
     val time_after_bins_hour, time_before_bins_day = System.currentTimeMillis()
@@ -72,6 +77,8 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
     val time_after_bins_month, time_before_bins_year = System.currentTimeMillis()
     cacheDB.calculateBinsByYear(sensor_id, since, until, parameter)
     val time_after_bins_year = System.currentTimeMillis()
+    Logger.info("END: Binning for sensor_id " + sensor_id + ", " + parameter + ", " +
+      LocalDateTime.now.format(DateTimeFormatter.ofPattern("YYYY/MM/dd_HH:mm:ss")))
     Logger.info(sensor_id + ", " + parameter + ", " + (time_after_bins_hour - time_before_bins_hour) + ", "
       + (time_after_bins_day - time_before_bins_day) + ", " + (time_after_bins_month - time_before_bins_month)
       + ", " + (time_after_bins_year - time_before_bins_year))
@@ -113,7 +120,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
           }
           val sensorObjectParameters = filterParameters(parameters, None)
           for (p <- sensorObjectParameters) {
-           calculateSeasonBinsHelper(sensor.id, since, until, p)
+            calculateSeasonBinsHelper(sensor.id, since, until, p)
           }
         })
         Ok(Json.obj("status" -> "OK", "sensors" -> allSensors.length.toString))
@@ -123,9 +130,13 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
   }
 
   def calculateSeasonBinsHelper(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): Unit = {
+    Logger.info("START: Binning season for sensor_id " + sensor_id + ", " + parameter + ", " +
+      LocalDateTime.now.format(DateTimeFormatter.ofPattern("YYYY/MM/dd_HH:mm:ss")))
     val time_before_bins_season = System.currentTimeMillis()
     cacheDB.calculateBinsBySeason(sensor_id, since, until, parameter)
     val time_after_bins_season = System.currentTimeMillis()
+    Logger.info("END: Binning season for sensor_id " + sensor_id + ", " + parameter + ", " +
+      LocalDateTime.now.format(DateTimeFormatter.ofPattern("YYYY/MM/dd_HH:mm:ss")))
     Logger.info(sensor_id + ", " + parameter + ", " + (time_after_bins_season - time_before_bins_season))
   }
 
