@@ -174,6 +174,31 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
     parameters.toList
   }
 
+  override def getParametersByDetailType(detail_type: String): List[ParameterModel] = {
+
+    var parameters: ListBuffer[ParameterModel] = ListBuffer()
+
+    db.withConnection { conn =>
+      val query = "SELECT row_to_json(t, true) as my_parameter FROM ( SELECT parameters.gid AS id, " +
+        "parameters.name, parameters.title, parameters.unit, " +
+        "parameters.search_view, parameters.explore_view, string_to_array(parameters.scale_names, ', ') AS scale_names, " +
+        "string_to_array(parameters.scale_colors, ', ') AS scale_colors FROM parameters, parameter_categories, categories " +
+        "WHERE parameters.gid = parameter_categories.parameter_gid AND " +
+        "categories.gid = parameter_categories.category_gid AND categories.detail_type = ? ) AS t"
+
+      val st = conn.prepareStatement(query)
+      st.setString(1, detail_type)
+      val rs = st.executeQuery()
+
+      while (rs.next()) {
+        val data = rs.getString(1)
+        parameters += Json.parse(data).as[ParameterModel]
+      }
+      rs.close()
+      st.close()
+    }
+    parameters.toList
+  }
   /**
    * Finds a category by name and type
    *
@@ -205,7 +230,7 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   /**
-   * Adds a categpry to the database
+   * Adds a category to the database
    *
    * @param category
    * @return The newly created category including the id

@@ -16,6 +16,7 @@ trait Parameters {
   def getAllParameters(): List[ParameterModel]
   def deleteParameter(id: Int): Unit
   def updateParameter(parameter: ParameterModel): Unit
+  def getParametersByDetailType(detail_type: String): List[ParameterModel]
 
   def addCategory(category: CategoryModel): CategoryModel
   def getCategoryNameAndType(name: String, detail_type: String): Option[CategoryModel]

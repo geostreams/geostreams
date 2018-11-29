@@ -26,7 +26,7 @@ import scala.collection.mutable.ListBuffer
  */
 @Singleton
 class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB: Sensors, datapointDB: Datapoints,
-  cacheDB: Cache, regionDB: RegionTrends, conf: Configuration)(implicit val messagesApi: MessagesApi)
+  cacheDB: Cache, regionDB: RegionTrends, parametersDB: Parameters, conf: Configuration)(implicit val messagesApi: MessagesApi)
     extends AuthTokenController with I18nSupport {
 
   /*
@@ -318,10 +318,16 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
 
         val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
         var result = Json.obj()
+        val stacked_bar_parameters = parametersDB.getParametersByDetailType("stacked_bar")
 
         for (p <- sensorObjectParameters) {
           val sources = sensorDB.getSensorSources(sensor_id, p)
-          result += (p -> buildJsonBinsSeason(sensor, season, since, until, p, sources, updateBins))
+          val filtered_params = stacked_bar_parameters.filter(_.name == p)
+          if (filtered_params.isEmpty) {
+            result += (p -> buildJsonBinsSeason(sensor, season, since, until, p, sources, updateBins))
+          } else {
+            result += (p -> buildJsonArrayBinsSeason(sensor, season, since, until, p, sources, updateBins))
+          }
 
         }
         Ok(Json.obj(
@@ -423,6 +429,29 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
       )
     })
 
+    JsArray(result_set.toList)
+  }
+
+  private def buildJsonArrayBinsSeason(sensor: SensorModel, season: Option[String], since: Option[String], until: Option[String], parameter: String, sources: List[String], updateBins: Boolean): JsValue = {
+
+    if (updateBins)
+      cacheDB.calculateBinsBySeason(sensor.id, since, until, parameter)
+
+    val stats_list = cacheDB.getCachedArrayBinStatsBySeason(sensor, season, since, until, parameter, false)
+
+    var result_set = ListBuffer[JsValue]()
+    stats_list.foreach(s => {
+      val (year, season, count, data, start_time, end_time) = s
+      val label = year.toString + "-" + season
+      result_set += Json.obj(
+        "count" -> count,
+        "data" -> data,
+        "year" -> year,
+        "date" -> start_time.toLocalDateTime,
+        "label" -> (year.toString + " " + season),
+        "sources" -> sources
+      )
+    })
     JsArray(result_set.toList)
   }
 

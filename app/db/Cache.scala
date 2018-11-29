@@ -34,6 +34,8 @@ trait Cache {
 
   def getCachedBinStatsBySeason(sensor: SensorModel, season: Option[String], since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, String, Int, Double, Double, Timestamp, Timestamp)]
 
+  def getCachedArrayBinStatsBySeason(sensor: SensorModel, season: Option[String], since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, String, Int, Map[String, Double], Timestamp, Timestamp)]
+
   def getCachedBinStatsByMonth(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)]
 
   def getCachedBinStatsByDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]
