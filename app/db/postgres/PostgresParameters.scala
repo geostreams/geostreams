@@ -89,6 +89,8 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
       val st = conn.prepareStatement(query)
       st.setInt(1, id)
       st.setInt(2, id)
+      st.execute()
+      st.close
     }
   }
 

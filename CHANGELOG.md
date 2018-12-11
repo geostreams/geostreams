@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed 
 - Out of memory error when user requests large downloads
   [GEOD-1015](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1015)
+- Fixed bug for deleting parameters
+  [GEOD-1177](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1177)
 
 ## [3.0.0-alpha.1] - 11-27-2017
 ### Added
