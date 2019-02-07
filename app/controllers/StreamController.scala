@@ -53,7 +53,7 @@ class StreamController @Inject() (val silhouette: Silhouette[TokenEnv], db: Data
    * @param id
    * @return
    */
-  def streamGet(id: Int) = SecuredAction(WithService("master")) {
+  def streamGet(id: Int) = Action {
     streams.getStream(id) match {
       case Some(stream) => Ok(Json.obj("status" -> "OK", "stream" -> stream))
       case None => NotFound(Json.obj("message" -> "Stream not found."))
