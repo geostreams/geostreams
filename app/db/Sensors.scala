@@ -19,7 +19,7 @@ trait Sensors {
   def getSensorStreams(id: Int): List[StreamModel]
   def getSensorsBySource(source: String): List[SensorModel]
   def updateSensorStats(id: Option[Int]): Unit
-  def searchSensors(geocode: Option[String], sensor_name: Option[String]): List[SensorModel]
+  def searchSensors(geocode: Option[String] = None, sensor_name: Option[String] = None): List[SensorModel]
   def deleteSensor(id: Int): Unit
   // used in other db.
   def updateEmptyStats()

@@ -1,0 +1,13 @@
+version: "3.3"
+
+services:
+  postgres:
+    ports:
+      - 5432:5432
+
+volumes:
+  postgres:
+    driver_opts:
+      type: none
+      device: ${DATA_DIR:-/tmp}/postgresql
+      o: bind

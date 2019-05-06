@@ -45,7 +45,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: datapoints; Type: TABLE; Schema: public; Owner: clowder
+-- Name: datapoints; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE datapoints (
@@ -59,10 +59,10 @@ CREATE TABLE datapoints (
 );
 
 
-ALTER TABLE datapoints OWNER TO clowder;
+ALTER TABLE datapoints OWNER TO geostreams;
 
 --
--- Name: geoindex_gid_seq; Type: SEQUENCE; Schema: public; Owner: clowder
+-- Name: geoindex_gid_seq; Type: SEQUENCE; Schema: public; Owner: geostreams
 --
 
 CREATE SEQUENCE geoindex_gid_seq
@@ -72,17 +72,17 @@ CREATE SEQUENCE geoindex_gid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE geoindex_gid_seq OWNER TO clowder;
+ALTER TABLE geoindex_gid_seq OWNER TO geostreams;
 
 --
--- Name: geoindex_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: clowder
+-- Name: geoindex_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: geostreams
 --
 
 ALTER SEQUENCE geoindex_gid_seq OWNED BY datapoints.gid;
 
 
 --
--- Name: sensors; Type: TABLE; Schema: public; Owner: clowder
+-- Name: sensors; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE sensors (
@@ -94,10 +94,10 @@ CREATE TABLE sensors (
 );
 
 
-ALTER TABLE sensors OWNER TO clowder;
+ALTER TABLE sensors OWNER TO geostreams;
 
 --
--- Name: sensors_gid_seq; Type: SEQUENCE; Schema: public; Owner: clowder
+-- Name: sensors_gid_seq; Type: SEQUENCE; Schema: public; Owner: geostreams
 --
 
 CREATE SEQUENCE sensors_gid_seq
@@ -107,17 +107,17 @@ CREATE SEQUENCE sensors_gid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE sensors_gid_seq OWNER TO clowder;
+ALTER TABLE sensors_gid_seq OWNER TO geostreams;
 
 --
--- Name: sensors_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: clowder
+-- Name: sensors_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: geostreams
 --
 
 ALTER SEQUENCE sensors_gid_seq OWNED BY sensors.gid;
 
 
 --
--- Name: streams; Type: TABLE; Schema: public; Owner: clowder
+-- Name: streams; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE streams (
@@ -133,10 +133,10 @@ CREATE TABLE streams (
 );
 
 
-ALTER TABLE streams OWNER TO clowder;
+ALTER TABLE streams OWNER TO geostreams;
 
 --
--- Name: streams_gid_seq; Type: SEQUENCE; Schema: public; Owner: clowder
+-- Name: streams_gid_seq; Type: SEQUENCE; Schema: public; Owner: geostreams
 --
 
 CREATE SEQUENCE streams_gid_seq
@@ -146,16 +146,16 @@ CREATE SEQUENCE streams_gid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE streams_gid_seq OWNER TO clowder;
+ALTER TABLE streams_gid_seq OWNER TO geostreams;
 
 --
--- Name: streams_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: clowder
+-- Name: streams_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: geostreams
 --
 
 ALTER SEQUENCE streams_gid_seq OWNED BY streams.gid;
 
 
--- Name: bins_year; Type: TABLE; Schema: public; Owner: clowder
+-- Name: bins_year; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE bins_year (
@@ -172,10 +172,10 @@ CREATE TABLE bins_year (
 );
 
 
-ALTER TABLE bins_year OWNER TO clowder;
+ALTER TABLE bins_year OWNER TO geostreams;
 
 
--- Name: bins_month; Type: TABLE; Schema: public; Owner: clowder
+-- Name: bins_month; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE bins_month (
@@ -193,10 +193,10 @@ CREATE TABLE bins_month (
 );
 
 
-ALTER TABLE bins_month OWNER TO clowder;
+ALTER TABLE bins_month OWNER TO geostreams;
 
 
--- Name: bins_hour; Type: TABLE; Schema: public; Owner: clowder
+-- Name: bins_hour; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE bins_day (
@@ -215,10 +215,10 @@ CREATE TABLE bins_day (
 );
 
 
-ALTER TABLE bins_day OWNER TO clowder;
+ALTER TABLE bins_day OWNER TO geostreams;
 
 
--- Name: bins_hour; Type: TABLE; Schema: public; Owner: clowder
+-- Name: bins_hour; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE bins_hour (
@@ -238,9 +238,9 @@ CREATE TABLE bins_hour (
 );
 
 
-ALTER TABLE bins_hour OWNER TO clowder;
+ALTER TABLE bins_hour OWNER TO geostreams;
 
--- Name: bins_season; Type: TABLE; Schema: public; Owner: clowder
+-- Name: bins_season; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE bins_season (
@@ -258,31 +258,31 @@ CREATE TABLE bins_season (
 );
 
 
-ALTER TABLE bins_season OWNER TO clowder;
+ALTER TABLE bins_season OWNER TO geostreams;
 
 --
--- Name: gid; Type: DEFAULT; Schema: public; Owner: clowder
+-- Name: gid; Type: DEFAULT; Schema: public; Owner: geostreams
 --
 
 ALTER TABLE ONLY datapoints ALTER COLUMN gid SET DEFAULT nextval('geoindex_gid_seq'::regclass);
 
 
 --
--- Name: gid; Type: DEFAULT; Schema: public; Owner: clowder
+-- Name: gid; Type: DEFAULT; Schema: public; Owner: geostreams
 --
 
 ALTER TABLE ONLY sensors ALTER COLUMN gid SET DEFAULT nextval('sensors_gid_seq'::regclass);
 
 
 --
--- Name: gid; Type: DEFAULT; Schema: public; Owner: clowder
+-- Name: gid; Type: DEFAULT; Schema: public; Owner: geostreams
 --
 
 ALTER TABLE ONLY streams ALTER COLUMN gid SET DEFAULT nextval('streams_gid_seq'::regclass);
 
 
 --
--- Name: geoindex_pkey; Type: CONSTRAINT; Schema: public; Owner: clowder
+-- Name: geoindex_pkey; Type: CONSTRAINT; Schema: public; Owner: geostreams
 --
 
 ALTER TABLE ONLY datapoints
@@ -290,7 +290,7 @@ ADD CONSTRAINT geoindex_pkey PRIMARY KEY (gid);
 
 
 --
--- Name: sensors_pkey; Type: CONSTRAINT; Schema: public; Owner: clowder
+-- Name: sensors_pkey; Type: CONSTRAINT; Schema: public; Owner: geostreams
 --
 
 ALTER TABLE ONLY sensors
@@ -298,7 +298,7 @@ ADD CONSTRAINT sensors_pkey PRIMARY KEY (gid);
 
 
 --
--- Name: streams_pkey; Type: CONSTRAINT; Schema: public; Owner: clowder
+-- Name: streams_pkey; Type: CONSTRAINT; Schema: public; Owner: geostreams
 --
 
 ALTER TABLE ONLY streams
@@ -306,42 +306,42 @@ ADD CONSTRAINT streams_pkey PRIMARY KEY (gid);
 
 
 --
--- Name: geoindex_gix; Type: INDEX; Schema: public; Owner: clowder
+-- Name: geoindex_gix; Type: INDEX; Schema: public; Owner: geostreams
 --
 
 CREATE INDEX geoindex_gix ON datapoints USING gist (geog);
 
 
 --
--- Name: geoindex_stream_id; Type: INDEX; Schema: public; Owner: clowder
+-- Name: geoindex_stream_id; Type: INDEX; Schema: public; Owner: geostreams
 --
 
 CREATE INDEX geoindex_stream_id ON datapoints USING btree (stream_id);
 
 
 --
--- Name: geoindex_times; Type: INDEX; Schema: public; Owner: clowder
+-- Name: geoindex_times; Type: INDEX; Schema: public; Owner: geostreams
 --
 
 CREATE INDEX geoindex_times ON datapoints USING btree (start_time, end_time);
 
 
 --
--- Name: sensors_gix; Type: INDEX; Schema: public; Owner: clowder
+-- Name: sensors_gix; Type: INDEX; Schema: public; Owner: geostreams
 --
 
 CREATE INDEX sensors_gix ON sensors USING gist (geog);
 
 
 --
--- Name: streams_gix; Type: INDEX; Schema: public; Owner: clowder
+-- Name: streams_gix; Type: INDEX; Schema: public; Owner: geostreams
 --
 
 CREATE INDEX streams_gix ON streams USING gist (geog);
 
 
 --
--- Name: streams_sensor_id; Type: INDEX; Schema: public; Owner: clowder
+-- Name: streams_sensor_id; Type: INDEX; Schema: public; Owner: geostreams
 --
 
 CREATE INDEX streams_sensor_id ON streams USING btree (sensor_id);
@@ -354,65 +354,65 @@ CREATE INDEX streams_sensor_id ON streams USING btree (sensor_id);
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 REVOKE ALL ON SCHEMA public FROM postgres;
 GRANT ALL ON SCHEMA public TO postgres;
-GRANT ALL ON SCHEMA public TO clowder;
+GRANT ALL ON SCHEMA public TO geostreams;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
 --
--- Name: datapoints; Type: ACL; Schema: public; Owner: clowder
+-- Name: datapoints; Type: ACL; Schema: public; Owner: geostreams
 --
 
 REVOKE ALL ON TABLE datapoints FROM PUBLIC;
-REVOKE ALL ON TABLE datapoints FROM clowder;
-GRANT ALL ON TABLE datapoints TO clowder;
+REVOKE ALL ON TABLE datapoints FROM geostreams;
+GRANT ALL ON TABLE datapoints TO geostreams;
 
 
 --
--- Name: geoindex_gid_seq; Type: ACL; Schema: public; Owner: clowder
+-- Name: geoindex_gid_seq; Type: ACL; Schema: public; Owner: geostreams
 --
 
 REVOKE ALL ON SEQUENCE geoindex_gid_seq FROM PUBLIC;
-REVOKE ALL ON SEQUENCE geoindex_gid_seq FROM clowder;
-GRANT ALL ON SEQUENCE geoindex_gid_seq TO clowder;
+REVOKE ALL ON SEQUENCE geoindex_gid_seq FROM geostreams;
+GRANT ALL ON SEQUENCE geoindex_gid_seq TO geostreams;
 
 
 --
--- Name: sensors; Type: ACL; Schema: public; Owner: clowder
+-- Name: sensors; Type: ACL; Schema: public; Owner: geostreams
 --
 
 REVOKE ALL ON TABLE sensors FROM PUBLIC;
-REVOKE ALL ON TABLE sensors FROM clowder;
-GRANT ALL ON TABLE sensors TO clowder;
+REVOKE ALL ON TABLE sensors FROM geostreams;
+GRANT ALL ON TABLE sensors TO geostreams;
 
 
 --
--- Name: sensors_gid_seq; Type: ACL; Schema: public; Owner: clowder
+-- Name: sensors_gid_seq; Type: ACL; Schema: public; Owner: geostreams
 --
 
 REVOKE ALL ON SEQUENCE sensors_gid_seq FROM PUBLIC;
-REVOKE ALL ON SEQUENCE sensors_gid_seq FROM clowder;
-GRANT ALL ON SEQUENCE sensors_gid_seq TO clowder;
+REVOKE ALL ON SEQUENCE sensors_gid_seq FROM geostreams;
+GRANT ALL ON SEQUENCE sensors_gid_seq TO geostreams;
 
 
 --
--- Name: streams; Type: ACL; Schema: public; Owner: clowder
+-- Name: streams; Type: ACL; Schema: public; Owner: geostreams
 --
 
 REVOKE ALL ON TABLE streams FROM PUBLIC;
-REVOKE ALL ON TABLE streams FROM clowder;
-GRANT ALL ON TABLE streams TO clowder;
+REVOKE ALL ON TABLE streams FROM geostreams;
+GRANT ALL ON TABLE streams TO geostreams;
 
 
 --
--- Name: streams_gid_seq; Type: ACL; Schema: public; Owner: clowder
+-- Name: streams_gid_seq; Type: ACL; Schema: public; Owner: geostreams
 --
 
 REVOKE ALL ON SEQUENCE streams_gid_seq FROM PUBLIC;
-REVOKE ALL ON SEQUENCE streams_gid_seq FROM clowder;
-GRANT ALL ON SEQUENCE streams_gid_seq TO clowder;
+REVOKE ALL ON SEQUENCE streams_gid_seq FROM geostreams;
+GRANT ALL ON SEQUENCE streams_gid_seq TO geostreams;
 
 --
--- Name: users; Type: TABLE; Schema: public; Owner: clowder
+-- Name: users; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE users (
@@ -426,10 +426,10 @@ CREATE TABLE users (
       services varchar(60) NOT NULL
 );
 
-ALTER TABLE users OWNER TO clowder;
+ALTER TABLE users OWNER TO geostreams;
 
 --
--- Name: events; Type: TABLE; Schema: public; Owner: clowder
+-- Name: events; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE events (
@@ -444,7 +444,7 @@ CREATE TABLE events (
       downloaddate timestamp with time zone
 );
 
-ALTER TABLE events OWNER TO clowder;
+ALTER TABLE events OWNER TO geostreams;
 
 
 -- need to be postgres user to do this
@@ -463,7 +463,7 @@ create cast (text as DOUBLE PRECISION) with function cast_to_double(text);
 
 
 --
--- Name: regions; Type: TABLE; Schema: public; Owner: clowder
+-- Name: regions; Type: TABLE; Schema: public; Owner: geostreams
 -- id is not integer, it's short name like 'su'.
 -- boundary & center_coordinate is not used currently
 --
@@ -474,10 +474,10 @@ CREATE TABLE regions(
       center_coordinate geography
 );
 
-ALTER TABLE regions OWNER TO clowder;
+ALTER TABLE regions OWNER TO geostreams;
 
 --
--- Name: region_trends; Type: TABLE; Schema: public; Owner: clowder
+-- Name: region_trends; Type: TABLE; Schema: public; Owner: geostreams
 --
 
 CREATE TABLE region_trends(
@@ -490,7 +490,7 @@ CREATE TABLE region_trends(
       PRIMARY KEY (region_id, season, parameter)
 );
 
-ALTER TABLE region_trends OWNER TO clowder;
+ALTER TABLE region_trends OWNER TO geostreams;
 
 CREATE TABLE parameters
 (
@@ -512,7 +512,7 @@ CREATE UNIQUE index parameters_gid_uindex
 CREATE UNIQUE index parameters_name_uindex
   on parameters (name);
 
-ALTER TABLE parameters OWNER TO clowder;
+ALTER TABLE parameters OWNER TO geostreams;
 
 CREATE TABLE categories
 (
@@ -526,7 +526,7 @@ CREATE TABLE categories
 CREATE UNIQUE index categories_id_uindex
   on categories (gid);
 
-ALTER TABLE categories OWNER TO clowder;
+ALTER TABLE categories OWNER TO geostreams;
 
 CREATE TABLE parameter_categories
 (
@@ -541,7 +541,7 @@ CREATE TABLE parameter_categories
     references categories
 );
 
-ALTER TABLE parameter_categories OWNER TO clowder;
+ALTER TABLE parameter_categories OWNER TO geostreams;
 
 --
 -- PostgreSQL database dump complete

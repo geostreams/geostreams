@@ -10,7 +10,6 @@ GET           /javascriptRoutes                                         controll
 GET           /datapoints/download                                      controllers.HomeController.datapointDownload(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, sensor_id: Option[String] ?= None)
 GET           /datapoints/DownloadCSV                                   controllers.HomeController.datapointDownloadCSV(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, sensor_id: Option[String] ?= None, purpose: String)
 
-
 # Authentication pages
 GET		      /signup									                controllers.Auth.startSignUp
 POST	      /signup									                controllers.Auth.handleStartSignUp
@@ -27,6 +26,9 @@ POST	      /change-password				                            controllers.Auth.hand
 GET  	      /manage-users				                                controllers.HomeController.manageUser
 POST  	      /manage-users				                                controllers.HomeController.changeMaster(email: String, enable: Boolean)
 GET  	      /events   				                                controllers.HomeController.listEvents()
+
+#
+GET           /api/status                                               controllers.StatusController.status()
 
 # Sensors
 GET           /api/sensors/:id                                          controllers.SensorController.sensorGet(id: Int)
@@ -61,7 +63,6 @@ GET           /api/datapoints/:id                                       controll
 GET           /api/datapoints                                           controllers.DatapointController.datapointSearch(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/datapoints                                           controllers.DatapointController.datapointSearch(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/trends/region/detail/:attribute                      controllers.DatapointController.trendsByRegionDetail(attribute: String, geocode: String, season: String ?= "spring")
-
 POST          /api/trends/region                                        controllers.CacheController.calculateTrendsByRegion()
 GET           /api/trends/region/:attribute                             controllers.CacheController.regionTrends(attribute: String, season: String ?= "spring")
 

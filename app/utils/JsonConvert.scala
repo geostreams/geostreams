@@ -1,6 +1,5 @@
 package utils
 
-import com.sun.xml.internal.ws.api.message.Header
 import play.api.Logger
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.json._

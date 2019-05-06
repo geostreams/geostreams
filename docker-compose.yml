@@ -1,0 +1,55 @@
+version: "3.3"
+
+services:
+  # web service API
+  geostreams:
+    image: geostreams/geostreams-api:latest
+    networks:
+    - geostreams
+    ports:
+    - 9000:9000
+    environment:
+    - APPLICATION_SECRET=${APPLICATION_SECRET:-notasecret}
+# Configs for docker swarm deployment (WIP)
+#    configs:
+#    - source: api_config
+#      target: /home/geostreams/application.conf
+#      uid: '103'
+#      gid: '103'
+#      mode: 0440
+    volumes:
+    - ${PWD}/conf/application.conf:/home/geostreams/conf/application.conf
+    depends_on:
+    - postgres
+    restart: unless-stopped
+
+  # postgresql + postgis database
+  postgres:
+    image: mdillon/postgis:9.5
+    networks:
+    - geostreams
+    volumes:
+    - postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # web frontend
+  geodashboard:
+    image: geostreams/geodashboard:3.0-beta
+    networks:
+    - geostreams
+    ports:
+    - 80:80
+    depends_on:
+    - geostreams
+    restart: unless-stopped
+
+networks:
+  geostreams:
+
+volumes:
+  postgres:
+
+#configs:
+#  api_config:
+#    file: ./conf/application.conf
+

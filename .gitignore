@@ -11,3 +11,5 @@ target
 .DS_Store
 out/
 geostreams-api-v3.iml
+docker-compose.override.yml
+.env
