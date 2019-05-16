@@ -243,8 +243,8 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
 
   def deleteStream(id: Int): Unit = {
     db.withConnection { conn =>
-      val deleteStream = "DELETE from datapoints where stream_id = ?" +
-        "DELETE from streams where gid = ?;"
+      val deleteStream = "DELETE FROM datapoints WHERE stream_id = ?;" +
+        "DELETE FROM streams WHERE gid = ?;"
 
       val st = conn.prepareStatement(deleteStream)
       st.setInt(1, id)

@@ -323,7 +323,7 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
     db.withConnection { conn =>
       val query = "DELETE FROM datapoints USING streams WHERE stream_id IN (SELECT gid FROM streams WHERE sensor_id = ?);" +
         "DELETE FROM streams WHERE gid IN (SELECT gid FROM streams WHERE sensor_id = ?);" +
-        "DELETE FROM sensors where gid = ?;"
+        "DELETE FROM sensors WHERE gid = ?;"
       val st = conn.prepareStatement(query)
       st.setInt(1, id.toInt)
       st.setInt(2, id.toInt)
