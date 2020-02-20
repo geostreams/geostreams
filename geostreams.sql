@@ -543,6 +543,27 @@ CREATE TABLE parameter_categories
 
 ALTER TABLE parameter_categories OWNER TO geostreams;
 
+CREATE VIEW annotated_datapoints AS
+SELECT datapoints.gid                                                                  AS id,
+       datapoints.geog                                                                 AS geog,
+       to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ')    AS created,
+       to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time,
+       to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ')   AS end_time,
+       datapoints.data                                                                 AS properties,
+       'Feature'::varchar(10)                                                          AS type,
+       ST_AsGeoJson(1, datapoints.geog, 15, 0)::json                                   AS geometry,
+       stream_id::int,
+       sensor_id::int,
+       sensors.name                                                                    AS sensor_name,
+       sensors.metadata                                                                AS metadata
+FROM datapoints,
+     sensors,
+     streams
+WHERE datapoints.stream_id = streams.gid
+  AND streams.sensor_id = sensors.gid;
+
+ALTER TABLE annotated_datapoints OWNER TO geostreams;
+
 --
 -- PostgreSQL database dump complete
 --

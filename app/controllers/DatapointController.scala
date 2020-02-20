@@ -107,15 +107,10 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], senso
     format: String, semi: Option[String], onlyCount: Boolean) = UserAwareAction { implicit request =>
 
     try {
-      val raw = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, false)
-
-      val filtered = semi match {
-        case Some(season) => raw.filter(p => DatapointsHelper.checkSeason(season, p.\("start_time").as[String]))
-        case None => raw
-      }
+      val filtered = datapointDB.searchDatapoints(since, until, geocode, stream_id, sensor_id, sources, attributes, false, semi, onlyCount)
 
       if (onlyCount) {
-        Ok(Json.obj("status" -> "OK", "datapointsLength" -> filtered.length))
+        Ok(Json.obj("status" -> "OK", "datapointsLength" -> filtered.head.values.head.toString()))
 
       } else {
         request.identity match {
@@ -123,7 +118,7 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], senso
 
             if (format == "csv") {
               val toByteArray: Enumeratee[String, Array[Byte]] = Enumeratee.map[String] { s => s.getBytes }
-              val strings = raw.length match {
+              val strings = filtered.length match {
                 case 0 => Enumerator("no data")
                 case _ => JsonConvert.jsonToCSV(filtered)
               }

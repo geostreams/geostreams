@@ -116,23 +116,29 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors, actSys: Acto
   }
 
   def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String],
-    sensor_id: Option[String], source: List[String], attributes: List[String], sortByStation: Boolean): List[JsObject] = {
+    sensor_id: Option[String], source: List[String], attributes: List[String], sortByStation: Boolean, season: Option[String], onlyCount: Boolean): List[JsObject] = {
     db.withConnection { conn =>
       val parts = geocode match {
         case Some(x) => x.split(",")
         case None => Array[String]()
       }
-      var query = "SELECT to_json(t) As datapoint FROM " +
-        "(SELECT datapoints.gid As id, to_char(datapoints.created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') " +
-        "AS created, to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, " +
-        "to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, data As properties, " +
-        "'Feature' As type, ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, stream_id::text, sensor_id::text, " +
-        "sensors.name as sensor_name FROM sensors, streams, datapoints" +
-        " WHERE sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid"
-      if (since.isDefined) query += " AND datapoints.start_time >= ?"
-      if (until.isDefined) query += " AND datapoints.end_time <= ?"
+      var query = "SELECT to_json(t) AS datapoint FROM ("
+      if (onlyCount) {
+        query += "SELECT count(*) AS total FROM annotated_datapoints WHERE true"
+      } else {
+        query += "SELECT id, created, start_time, end_time, properties, type, geometry, stream_id, sensor_id, sensor_name FROM annotated_datapoints WHERE true"
+      }
+      season match {
+        case Some(s) => s match {
+          case s if s.equalsIgnoreCase("spring") => query += " AND EXTRACT(MONTH FROM start_time::date) BETWEEN 3 AND 5"
+          case s if s.equalsIgnoreCase("summer") => query += " AND EXTRACT(MONTH FROM start_time::date) BETWEEN 6 AND 8"
+        }
+        case None => {}
+      }
+      if (since.isDefined) query += " AND start_time >= ?"
+      if (until.isDefined) query += " AND end_time <= ?"
       if (parts.length == 3) {
-        query += " AND ST_DWithin(datapoints.geog, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)"
+        query += " AND ST_DWithin(geog, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)"
       } else if ((parts.length >= 6) && (parts.length % 2 == 0)) {
         query += " AND ST_Covers(ST_MakePolygon(ST_MakeLine(ARRAY["
         var j = 0
@@ -140,40 +146,39 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors, actSys: Acto
           query += "ST_MakePoint(?, ?), "
           j += 2
         }
-        query += "ST_MakePoint(?, ?)])), datapoints.geog)"
+        query += "ST_MakePoint(?, ?)])), geog)"
       }
       // attributes
       if (attributes.nonEmpty) {
         //if a ":" is found, assume this is a filter, otherwise it's just a presence check
         if (attributes(0).indexOf(":") > -1) {
-          query += " AND (datapoints.data @> ?::jsonb"
+          query += " AND (properties @> ?::jsonb"
         } else {
-          query += " AND (datapoints.data ?? ?"
+          query += " AND (properties ?? ?"
         }
         for (x <- 1 until attributes.size)
           if (attributes(x).indexOf(":") > -1) {
-            query += " OR (datapoints.data @> ?::jsonb)"
+            query += " OR (properties @> ?::jsonb)"
           } else {
-            query += " OR (datapoints.data ?? ?)"
+            query += " OR (properties ?? ?)"
           }
         query += ")"
       }
       // data source
       if (source.nonEmpty) {
-        query += " AND (? = json_extract_path_text(sensors.metadata,'type','id')"
+        query += " AND (? = json_extract_path_text(metadata,'type','id')"
         for (x <- 1 until source.size)
-          query += " OR ? = json_extract_path_text(sensors.metadata,'type','id')"
+          query += " OR ? = json_extract_path_text(metadata,'type','id')"
         query += ")"
       }
       //stream
       if (stream_id.isDefined) query += " AND stream_id = ?"
       //sensor
       if (sensor_id.isDefined) query += " AND sensor_id = ?"
-      query += " order by "
       if (sortByStation) {
-        query += "sensor_name, "
+        query += " order by sensor_name asc"
       }
-      query += "start_time asc) As t;"
+      query += ") As t;"
       // Populate values ------
       val st = conn.prepareStatement(query)
       var i = 0

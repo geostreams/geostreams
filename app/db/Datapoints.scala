@@ -16,7 +16,7 @@ trait Datapoints {
   def addDatapoints(datapoints: List[DatapointModel]): Int
   def getDatapoint(id: Int): Option[DatapointModel]
   def searchDatapoints(since: Option[String], until: Option[String], geocode: Option[String], stream_id: Option[String], sensor_id: Option[String],
-    source: List[String], attributes: List[String], sortByStation: Boolean): List[JsObject]
+    source: List[String], attributes: List[String], sortByStation: Boolean, season: Option[String] = None, onlyCount: Boolean = false): List[JsObject]
   def deleteDatapoint(id: Int): Unit
   def renameParam(oldParam: String, newParam: String, source: Option[String], region: Option[String])
   def getCount(sensor_id: Option[Int]): Int
