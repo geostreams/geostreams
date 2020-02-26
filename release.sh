@@ -20,12 +20,12 @@ ${DEBUG} $(dirname $0)/docker.sh
 
 # find out the version
 if [ "${BRANCH}" = "master" ]; then
-    VERSION=${VERSION:-"3.0.0-alpha latest"}
+    VERSION=${VERSION:-"3.0.0-beta latest"}
 elif [ "${BRANCH}" = "develop" ]; then
     VERSION="develop"
 else
 #    exit 0
-    VERSION=${VERSION:-"3.0.0-alpha latest"}
+    VERSION=${VERSION:-"3.0.0-beta latest"}
 fi
 
 # tag all images and push if needed
