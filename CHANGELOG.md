@@ -4,8 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
  
+## [Unreleased]
+*Warning*: Requires Postgres schema update. See `geostreams.sql`.
+### Added
+- Postgres view to speed up downloading of datapoints.
+ 
 ## [3.0.0-beta.5] - 2019-05-16
-
 ### Added
 - Event bus, record download actions
   [GEOD-1009](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1009)
