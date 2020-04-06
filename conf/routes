@@ -85,7 +85,6 @@ GET           /api/cache/analysis                                       controll
 # Admin
 GET           /api/counts                                               controllers.AdminController.counts(sensor_id: Option[Int]?= None)
 
-
 # Testing postgres connection
 GET           /postgresql                                               controllers.DBController.index
 
