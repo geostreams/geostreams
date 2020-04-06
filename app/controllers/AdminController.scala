@@ -13,10 +13,6 @@ import play.api.mvc.{ Action, Controller }
 class AdminController @Inject() (cacheDB: Cache, streamsDB: Streams, sensorDB: Sensors, datapointsDB: Datapoints)
     extends Controller {
 
-  def deleteAll = Action {
-    NotImplemented
-  }
-
   def counts(sensor_id: Option[Int]) = Action {
     val count_bins_year = cacheDB.getCountBinsByYear(sensor_id)
     val count_bins_season = cacheDB.getCountBinsBySeason(sensor_id)
@@ -38,9 +34,5 @@ class AdminController @Inject() (cacheDB: Cache, streamsDB: Streams, sensorDB: S
       "bins_day" -> count_bins_day,
       "bins_hour" -> count_bins_hour
     ))
-  }
-
-  def getConfig = Action {
-    NotImplemented
   }
 }
