@@ -82,5 +82,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Query to get sensor is expensive since it calculates min / max time dynamically.
 - Rename controller methods for consistency
   [GEOD-958](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-958)
+- Remove four controllers and routes that were not yet implemented
+  [GEOD-1309](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1309)
+  
 
 [3.0.0-alpha.1]: https://opensource.ncsa.illinois.edu/bitbucket/projects/GEOD/repos/geo-temporal-api-v2/browse
