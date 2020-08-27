@@ -56,8 +56,6 @@ POST          /api/datapoints                                           controll
 POST          /api/datapoints/bulk                                      controllers.DatapointController.datapointsCreate(invalidateCache: Boolean ?= true)
 DELETE        /api/datapoints/:id                                       controllers.DatapointController.datapointDelete(id: Int)
 PUT           /api/datapoints/renameParam/:oldParam/:newParam           controllers.DatapointController.renameParam(oldParam: String, newParam: String, source: Option[String] ?= None, region: Option[String] ?= None)
-GET           /api/datapoints/averages                                  controllers.DatapointController.datapointAverage(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
-GET           /api/datapoints/trends                                    controllers.DatapointController.datapointTrends(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
 GET           /api/datapoints/bin/:time/:depth                          controllers.DatapointController.datapointsBin(time, depth: Double, raw: Boolean ?= false, since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty)
 GET           /api/datapoints/:id                                       controllers.DatapointController.datapointGet(id: Int)
 GET           /api/datapoints                                           controllers.DatapointController.datapointSearch(since: Option[String] ?= None, until: Option[String] ?= None, geocode: Option[String] ?= None,  stream_id: Option[String] ?= None, sensor_id: Option[String] ?= None, sources: List[String] ?= List.empty, attributes: List[String] ?= List.empty, format: String ?= "json", semi: Option[String], onlyCount: Boolean ?=false)
@@ -85,9 +83,7 @@ GET           /api/cache/trends                                         controll
 GET           /api/cache/analysis                                       controllers.CacheController.getExploratoryTrends(parameter: String, rolling_years: Int, baseline_years: Int, sensor_id: List[Int])
 
 # Admin
-DELETE        /api/dropall                                              controllers.AdminController.deleteAll
 GET           /api/counts                                               controllers.AdminController.counts(sensor_id: Option[Int]?= None)
-GET           /api/config                                               controllers.AdminController.getConfig
 
 # Testing postgres connection
 GET           /postgresql                                               controllers.DBController.index

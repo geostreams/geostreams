@@ -14,16 +14,16 @@ class PostgresRegionTrends @Inject() (db: Database, sensors: Sensors) extends Re
   def trendsByRegion(attribute: String, geocode: String, latFirst: Boolean): List[JsValue] = {
     db.withConnection { conn =>
       var query = "SELECT to_json(t) As datapoint FROM (SELECT (datapoints.data ->> ?)::text AS data, " +
-        "to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS time FROM sensors, streams, " +
-        "datapoints WHERE sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid AND datapoints.data ?? ? "
-      query += " AND ST_Covers(ST_MakePolygon(ST_MakeLine(ARRAY["
+        "to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS time FROM " +
+        "datapoints WHERE datapoints.data ?? ? "
+      query += " AND ST_Within(datapoints.geog::geometry, ST_SetSRID(ST_MakePolygon(ST_MakeLine(ARRAY["
       val parts = geocode.split(",")
       var j = 0
       while (j < parts.length - 2) {
         query += "ST_MakePoint(?, ?), "
         j += 2
       }
-      query += "ST_MakePoint(?, ?)])), datapoints.geog)"
+      query += "ST_MakePoint(?, ?)])), 4326))"
 
       query += ") AS t; "
       val st = conn.prepareStatement(query)

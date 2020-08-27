@@ -90,18 +90,6 @@ class DatapointController @Inject() (val silhouette: Silhouette[TokenEnv], senso
     Ok(Json.obj("status" -> "OK"))
   }
 
-  def datapointAverage(since: Option[String], until: Option[String], geocode: Option[String],
-    stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
-    format: String, semi: Option[String], onlyCount: Boolean) = Action {
-    NotImplemented
-  }
-
-  def datapointTrends(since: Option[String], until: Option[String], geocode: Option[String],
-    stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
-    format: String, semi: Option[String], onlyCount: Boolean) = Action {
-    NotImplemented
-  }
-
   def datapointSearch(since: Option[String], until: Option[String], geocode: Option[String],
     stream_id: Option[String], sensor_id: Option[String], sources: List[String], attributes: List[String],
     format: String, semi: Option[String], onlyCount: Boolean) = UserAwareAction { implicit request =>
