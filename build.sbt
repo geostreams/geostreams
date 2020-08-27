@@ -1,7 +1,7 @@
 name := """geostreams"""
 organization := "edu.illinois.ncsa"
 
-version := "3.0.0-beta.5"
+version := "3.0.0"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
