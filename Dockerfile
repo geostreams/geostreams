@@ -62,6 +62,7 @@ WORKDIR /home/geostreams
 COPY --from=geostreams-build /src/geostreams /home/geostreams/
 COPY geostreams.sql /home/geostreams/data/
 COPY docker/geostreams.sh docker/entrypoint.sh /home/geostreams/bin/
+RUN chmod +x /home/geostreams/bin/geostreams.sh /home/geostreams/bin/entrypoint.sh
 
 # command to run when starting docker
 ENTRYPOINT ["/home/geostreams/bin/entrypoint.sh"]
