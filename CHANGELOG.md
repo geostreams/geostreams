@@ -3,14 +3,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
- 
+
 ## [3.0.1] - 2020-08-27
+
+### Fixed
+- Improved speed of query for `GET /api/trends/region/:attribute`.
+  [GEOD-1343](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1343)
+ 
+## [3.0.0] - 2020-02-27
 *Warning*: Requires Postgres schema update. See `geostreams.sql`.
 
 ### Fixed
 - Improved datapoints downloading speed by adding a Postgres view.
-- Improved speed of query for `GET /api/trends/region/:attribute`.
-  [GEOD-1343](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1343)
  
 ## [3.0.0-beta.5] - 2019-05-16
 ### Added
