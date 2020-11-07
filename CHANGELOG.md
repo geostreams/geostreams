@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [GEOD-1154](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1154)
 - Added logs for start and end time in binning endpoints
   [GEOD-1162](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1162)
+- Added swagger doc [GEOD-1319](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1319)
   
 ### Changed
 - Changed header and email title
