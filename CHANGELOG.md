@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## UNRELEASED
+
+### Changed
+- Updated parameters.name, parameters.title, regions.title, and events.attributes column types.
+  [GEOD-1361](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1361)
+
 ## [3.0.2] - 2020-08-27
 
 ### Fixed
