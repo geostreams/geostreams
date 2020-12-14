@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## UNRELEASED
+## Unreleased
+
+### Added
+- Swagger docs [GEOD-1319](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1319)
 
 ### Changed
 - Updated parameters.name, parameters.title, regions.title, and events.attributes column types.
