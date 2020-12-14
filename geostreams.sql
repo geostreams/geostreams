@@ -436,7 +436,7 @@ CREATE TABLE events (
       gid integer default nextval('geoindex_gid_seq'::regclass) PRIMARY KEY,
       userid integer REFERENCES users (gid),
       sources varchar(50),
-      attributes varchar(200),
+      attributes text,
       geocode varchar(2000),
       since varchar(50),
       until varchar(50),
@@ -469,7 +469,7 @@ create cast (text as DOUBLE PRECISION) with function cast_to_double(text);
 --
 CREATE TABLE regions(
       id varchar(10) PRIMARY KEY,
-      title varchar(50),
+      title varchar(200),
       boundary geography,
       center_coordinate geography
 );
@@ -497,8 +497,8 @@ CREATE TABLE parameters
     gid integer default nextval('geoindex_gid_seq' :: regclass) not null
     constraint parameters_pkey
     primary key,
-    name         varchar(50) not null,
-    title        varchar(100),
+    name         varchar(200) not null,
+    title        varchar(200),
     unit         varchar(20),
     search_view  boolean default true,
     explore_view boolean default true,
