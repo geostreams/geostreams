@@ -5,7 +5,7 @@ import javax.inject.Inject
 import models.RegionModel
 import play.api.Logger
 import play.api.db.Database
-import play.api.libs.json.{ JsObject, JsValue, Json }
+import play.api.libs.json.{ JsError, JsNumber, JsObject, JsResult, JsSuccess, JsValue, Json }
 
 import scala.collection.mutable.ListBuffer
 
@@ -42,14 +42,35 @@ class PostgresRegionTrends @Inject() (db: Database, sensors: Sensors) extends Re
         j += 2
       }
 
-      // for test
-      // println(st.toString)
-
       val rs = st.executeQuery()
+
       var filtereddata: ListBuffer[JsValue] = ListBuffer()
       while (rs.next()) {
-        val data = rs.getString(1)
-        filtereddata += Json.parse(data)
+        // Convert result set to play json object
+        var queryObj: JsValue = Json.parse(rs.getString(1))
+        // Check if the data value is a an object
+        val dataType: JsResult[JsObject] = Json.parse((queryObj \ "data").as[String]).validate[JsObject]
+        dataType match {
+          case s: JsSuccess[JsObject] => {
+            // Since its an object, sum all values in the object
+            val data = s.get
+            var sum = 0.0
+            data.value.foreach((x) => {
+              val (key, value) = x
+              sum += value.as[Double]
+            })
+            // Cast as JsValue (same type as what we got from parsing)
+            val finalVal: JsValue = Json.obj(
+              "data" -> sum,
+              "time" -> (queryObj \ "time").as[String]
+            )
+            filtereddata += finalVal
+          }
+          case e: JsError => {
+            // Do nothing to data and just append if not an object
+            filtereddata += queryObj
+          }
+        }
       }
       rs.close()
       st.close()
