@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Swagger docs [GEOD-1319](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1319)
+- Support for nested parameters in trends regions (for example when storing zooplankton for GLM) 
+  [PR#4](https://github.com/geostreams/geostreams/pull/4)
 
 ### Changed
 - Updated parameters.name, parameters.title, regions.title, and events.attributes column types.
