@@ -4,10 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 3.1.0 - 2020-12-14
 
 ### Added
 - Swagger docs [GEOD-1319](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1319)
+- Support for nested parameters in trends regions (for example when storing zooplankton for GLM) 
+  [PR#4](https://github.com/geostreams/geostreams/pull/4)
+
+### Changed
+- Updated parameters.name, parameters.title, regions.title, and events.attributes column types.
+  [GEOD-1361](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1361)
 
 ## [3.0.2] - 2020-08-27
 
