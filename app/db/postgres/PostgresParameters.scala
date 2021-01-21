@@ -365,4 +365,9 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
     mappings.toList
   }
 
+  override def isParameterNested(name: String): Boolean = {
+    val nested_parameters = getParametersByDetailType("stacked_bar")
+    nested_parameters.exists(_.name == name)
+  }
+
 }

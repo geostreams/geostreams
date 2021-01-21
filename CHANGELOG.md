@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
+## UNRELEASED 
+### Added
+- Support for nested parameters in cached trends endpoints [GEOD-1356](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1356)
+### Changed
+
 
 ## 3.1.0 - 2020-12-14
 

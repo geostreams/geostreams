@@ -1181,8 +1181,9 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
   /* Fetch existing bin statistics from cache for a specific parameter.
  *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
  *  total -- true will return a single total for all bins requested, instead of individual bins.
+ *  sumNested -- true will sum the values if parameter has nested values, instead of returning individual values.
  */
-  def getCachedBinStatsBySeason(sensor: SensorModel, season: Option[String], since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, String, Int, Double, Double, Timestamp, Timestamp)] = {
+  def getCachedBinStatsBySeason(sensor: SensorModel, season: Option[String], since: Option[String], until: Option[String], parameter: String, total: Boolean, sumNested: Boolean = false): List[(Int, String, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var result = List[(Int, String, Int, Double, Double, Timestamp, Timestamp)]()
     var tot_count = 0
@@ -1195,18 +1196,41 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       case (None, Some(end_time)) => DatapointsHelper.parseTimeRange(sensor.min_start_time, end_time)
       case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
     }
-
     db.withConnection { conn =>
-      var query = "select yyyy, season, datapoint_count, sum, average, start_time, end_time from bins_season " +
-        "where sensor_id = ? and parameter = ? and yyyy >= ? and yyyy <= ?"
-      season match {
-        case (Some(s)) => query += " and season = ? ;"
-        case None => query += ";"
+      var query = ""
+      var parameterName = parameter;
+      if (parametersDB.isParameterNested(parameter) && sumNested) {
+        query =
+          "SELECT yyyy, season," +
+            "MAX(datapoint_count) as datapoint_count," +
+            "SUM(sum) as sum," +
+            "SUM(average) as average," +
+            "start_time," +
+            "end_time\n" +
+            "FROM bins_season\n" +
+            "WHERE sensor_id = ? " +
+            "AND parameter LIKE ? " +
+            "AND yyyy > ? " +
+            "AND yyyy < ?"
+        season match {
+          case (Some(s)) => query += "AND season = ?\n"
+          case None => query += "\n"
+        }
+        query +=
+          "GROUP BY sensor_id, yyyy, season, SUBSTRING(parameter, 0, STRPOS(parameter, '/')), start_time, end_time;\n"
+        parameterName += "%"
+      } else {
+        query = "select yyyy, season, datapoint_count, sum, average, start_time, end_time from bins_season " +
+          "where sensor_id = ? and parameter = ? and yyyy >= ? and yyyy <= ?"
+        season match {
+          case (Some(s)) => query += " and season = ? ;"
+          case None => query += ";"
+        }
       }
-      val st = conn.prepareStatement(query)
 
+      val st = conn.prepareStatement(query)
       st.setInt(1, sensor.id)
-      st.setString(2, parameter)
+      st.setString(2, parameterName)
       st.setInt(3, start_year)
       st.setInt(4, end_year)
 
