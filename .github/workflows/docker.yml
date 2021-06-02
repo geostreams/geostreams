@@ -1,4 +1,5 @@
 name: Docker
+
 on:
   push:
     branches:
@@ -6,15 +7,73 @@ on:
   pull_request:
     branches:
       - master
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        name:
+          - geostreams-api
+        include:
+          - description: "Geostreams API Production Image"
+
     steps:
-      - uses: actions/checkout@master
-      - name: Build and Push to Registry
-        uses: docker/build-push-action@v1
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - # Generates the tags and gets the version number from build.sbt files
+        # Image is tagged with `latest` and the version number in `build.sbt`
+        name: Gather Information
+        id: info
+        env:
+          PROJECT_NAME: geostreams-api
+          HUB_REPO: hub.ncsa.illinois.edu/geostreams
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          VERSION="$(grep version build.sbt | awk -F \" '{print $2}')"
+          TAGS="${HUB_REPO}/${PROJECT_NAME}:latest,${HUB_REPO}/${PROJECT_NAME}:${VERSION}"
+          echo "::set-output name=version::${VERSION}"
+          echo "::set-output name=tags::${TAGS}"
+          echo "::set-output name=buildargs::PROJECT_NAME=$PROJECT_NAME"
+          echo "::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: geostreams/geostreams
-          tags: latest
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Login to Hub
+        uses: docker/login-action@v1
+        with:
+          registry: hub.ncsa.illinois.edu
+          username: ${{ secrets.HUB_USERNAME }}
+          password: ${{ secrets.HUB_PASSWORD }}
+
+      - name: Build and Push to Registry
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          context: .
+          file: ./Dockerfile
+          build-args: |
+            ${{ steps.info.outputs.buildargs }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: ${{ steps.info.outputs.tags }}
+          labels: |
+            image.title= ${{ matrix.description }}
+            image.version=${{ steps.info.outputs.version }}
+            image.created=${{ steps.info.outputs.created }}
+            image.revision=${{ github.sha }}

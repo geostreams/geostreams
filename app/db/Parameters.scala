@@ -26,4 +26,6 @@ trait Parameters {
   def addMapping(mapping: CategoryParameterMapping): CategoryParameterMapping
   def getMappingByParameterId(parameterId: Int): List[CategoryParameterMapping]
 
+  def isParameterNested(name: String): Boolean
+
 }

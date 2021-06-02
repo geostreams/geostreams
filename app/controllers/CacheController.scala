@@ -667,7 +667,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
       val max_end_time = new DateTime(sensor.max_end_time)
       var first_year = max_end_time.getYear()
       var last_average = 0.0
-      val allbins = cacheDB.getCachedBinStatsBySeason(sensor, season, None, None, parameter, false)
+      val allbins = cacheDB.getCachedBinStatsBySeason(sensor, season, None, None, parameter, false, true)
       var total_count = 0.0
       var total_sum = 0.0
       var last10_count = 0.0
