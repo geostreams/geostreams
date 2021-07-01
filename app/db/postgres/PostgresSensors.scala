@@ -321,13 +321,23 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
 
   def deleteSensor(id: Int): Unit = {
     db.withConnection { conn =>
-      val query = "DELETE FROM datapoints USING streams WHERE stream_id IN (SELECT gid FROM streams WHERE sensor_id = ?);" +
+      val query = "DELETE FROM bins_year WHERE sensor_id = ?;" +
+        "DELETE FROM bins_season WHERE sensor_id = ?;" +
+        "DELETE FROM bins_month WHERE sensor_id = ?;" +
+        "DELETE FROM bins_day WHERE sensor_id = ?;" +
+        "DELETE FROM bins_hour WHERE sensor_id = ?;" +
+        "DELETE FROM datapoints USING streams WHERE stream_id IN (SELECT gid FROM streams WHERE sensor_id = ?);" +
         "DELETE FROM streams WHERE gid IN (SELECT gid FROM streams WHERE sensor_id = ?);" +
         "DELETE FROM sensors WHERE gid = ?;"
       val st = conn.prepareStatement(query)
       st.setInt(1, id.toInt)
       st.setInt(2, id.toInt)
       st.setInt(3, id.toInt)
+      st.setInt(4, id.toInt)
+      st.setInt(5, id.toInt)
+      st.setInt(6, id.toInt)
+      st.setInt(7, id.toInt)
+      st.setInt(8, id.toInt)
       st.executeUpdate()
       st.close()
     }
