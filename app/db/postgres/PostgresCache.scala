@@ -1470,6 +1470,8 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
     }
 
+    var isNested = parametersDB.isParameterNested(parameter)
+
     db.withConnection { conn =>
       var st = conn.prepareStatement("")
 
@@ -1514,6 +1516,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
         st.setInt(7, end_day)
         st.setInt(8, start_month)
         st.setInt(9, end_month)
+
         st.executeQuery()
       }
 
@@ -1541,6 +1544,99 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       result
   }
 
+  def getCachedArrayBinStatsByDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, JsValue, JsValue, Timestamp, Timestamp)] = {
+
+    var result = List[(Int, Int, Int, Int, JsValue, JsValue, Timestamp, Timestamp)]()
+    var tot_count = 0
+    var tot_sum = 0.0
+    var tot_avg = 0.0
+
+    val (start_year, end_year, start_month, end_month, start_day, end_day, start_hour, end_hour) = (since, until) match {
+      case (Some(start_time), Some(end_time)) => DatapointsHelper.parseTimeRange(start_time, end_time)
+      case (Some(start_time), None) => DatapointsHelper.parseTimeRange(start_time, sensor.max_end_time)
+      case (None, Some(end_time)) => DatapointsHelper.parseTimeRange(sensor.min_start_time, end_time)
+      case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+    }
+
+    db.withConnection { conn =>
+      var st = conn.prepareStatement("")
+
+      val stats = if (start_year != end_year) {
+        val query = "select yyyy, mm, dd, datapoint_count, sum, average, start_time, end_time from bins_day " +
+          "where sensor_id = ? and parameter = ? and (" +
+          // start_year subclause -- special check for start_month+start_day, then get everything after
+          " (yyyy = ? and ((mm = ? and dd >= ?) or (mm > ?))) or " +
+          // end_year subclause -- special check for end_month+end_day, then get everything before
+          " (yyyy = ? and ((mm = ? and dd <= ?) or (mm < ?))) or " +
+          // between subclause -- get everything for these months
+          " (yyyy > ? and yyyy < ?));"
+        st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setString(2, parameter)
+        // start_year subclause
+        st.setInt(3, start_year)
+        st.setInt(4, start_month)
+        st.setInt(5, start_day)
+        st.setInt(6, start_month)
+        // end_year subclause
+        st.setInt(7, end_year)
+        st.setInt(8, end_month)
+        st.setInt(9, end_day)
+        st.setInt(10, end_month)
+        // between subclause
+        st.setInt(11, start_year)
+        st.setInt(12, end_year)
+        st.executeQuery()
+      } else {
+        var query = "SELECT yyyy, dd, mm, max(datapoint_count) as datapoint_count, " +
+          "jsonb_object_agg(t.parameter,t.sum) as sum, " +
+          "jsonb_object_agg(t.parameter,t.average) as average, " +
+          "min(start_time) as start_time, max(end_time) as end_time " +
+          "FROM ( SELECT yyyy, mm, dd,AVG(average) as average, max(datapoint_count) as datapoint_count, sum(sum), " +
+          "	  			min(start_time) as start_time, max(end_time) as end_time, " +
+          "	  		trim(leading ? from parameter) as parameter " +
+          "	  	FROM bins_day  " +
+          "	  	WHERE sensor_id = ?  " +
+          "		AND parameter like ?  " +
+          "		AND yyyy = ? and ((mm = ? and dd >= ?) or (mm = ? and dd <= ?) or (mm > ? and mm < ?)) " +
+          "	  	GROUP BY parameter, yyyy, mm, dd " +
+          "	 ) as t " +
+          "GROUP BY yyyy, dd, mm " +
+          "ORDER BY   yyyy DESC,mm asc, dd ASC; ";
+
+        st = conn.prepareStatement(query)
+        st.setString(1, parameter + '/')
+        st.setInt(2, sensor.id)
+        st.setString(3, parameter + '%')
+        st.setInt(4, start_year)
+        st.setInt(5, start_month)
+        st.setInt(6, start_day)
+        st.setInt(7, end_month)
+        st.setInt(8, end_day)
+        st.setInt(9, start_month)
+        st.setInt(10, end_month)
+
+        st.executeQuery()
+      }
+
+      while (stats.next()) {
+        val sum: JsValue = Json.parse(stats.getObject(5).toString)
+        result = result :+ (
+          stats.getInt(1), // year
+          stats.getInt(2), // month
+          stats.getInt(3), // day
+          stats.getInt(4),
+          Json.parse(stats.getObject(5).toString), // object of sum
+          Json.parse(stats.getObject(6).toString), // object if avg
+          stats.getTimestamp(7), // start_time
+          stats.getTimestamp(8) // end_time
+        )
+      }
+      stats.close()
+      st.close()
+    }
+    result
+  }
   def getCachedBinStatsByHour(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var result = List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
