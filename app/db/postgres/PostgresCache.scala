@@ -394,7 +394,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       val stats = st.executeQuery()
 
       while (stats.next()) {
-        if (stats.getInt(3) > 0)
+        if (stats.getInt(4) > 0)
           bulk_stats = bulk_stats :+ (
             stats.getString(1), // parameter name or nested attribute name
             stats.getInt(2), // year
@@ -483,7 +483,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       val stats = st.executeQuery()
 
       while (stats.next()) {
-        if (stats.getInt(4) > 0)
+        if (stats.getInt(5) > 0)
           bulk_stats = bulk_stats :+ (
             stats.getString(1), // parameter name or nested attribute name
             stats.getInt(2), // year
@@ -575,7 +575,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       val stats = st.executeQuery()
 
       while (stats.next()) {
-        if (stats.getInt(5) > 0)
+        if (stats.getInt(6) > 0)
           bulk_stats = bulk_stats :+ (
             stats.getString(1), // parameter name or nested attribute name
             stats.getInt(2), // year
