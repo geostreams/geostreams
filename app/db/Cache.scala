@@ -3,7 +3,8 @@ package db
 import java.sql.Timestamp
 import com.google.inject.ImplementedBy
 import db.postgres.PostgresCache
-import models.{ SensorModel, DatapointModel }
+import models.{ DatapointModel, SensorModel }
+import play.api.libs.json.{ JsValue }
 
 /**
  * Access Cache store.
@@ -39,6 +40,8 @@ trait Cache {
   def getCachedBinStatsByMonth(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)]
 
   def getCachedBinStatsByDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]
+
+  def getCachedArrayBinStatsByDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, JsValue, JsValue, Timestamp, Timestamp)]
 
   def getCachedBinStatsByHour(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]
 

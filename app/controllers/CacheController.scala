@@ -280,7 +280,11 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
 
         for (p <- sensorObjectParameters) {
           val sources = sensorDB.getSensorSources(sensor_id, p)
-          result += (p -> buildJsonBinsDay(sensor, since, until, p, sources, updateBins))
+          if (parametersDB.isParameterNested(p)) {
+            result += (p -> buildJsonArrayBinsDay(sensor, since, until, p, sources, updateBins))
+          } else {
+            result += (p -> buildJsonBinsDay(sensor, since, until, p, sources, updateBins))
+          }
         }
 
         Ok(Json.obj(
@@ -318,7 +322,7 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
 
         val sensorObjectParameters = filterParameters(sensor.parameters, parameter)
         var result = Json.obj()
-        val stacked_bar_parameters = parametersDB.getParametersByDetailType("stacked_bar")
+        val stacked_bar_parameters = parametersDB.getParametersByDetailType("stacked%")
 
         for (p <- sensorObjectParameters) {
           val sources = sensorDB.getSensorSources(sensor_id, p)
@@ -375,8 +379,36 @@ class CacheController @Inject() (val silhouette: Silhouette[TokenEnv], sensorDB:
   private def buildJsonBinsDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, sources: List[String], updateBins: Boolean): JsValue = {
     if (updateBins)
       cacheDB.calculateBinsByDay(sensor.id, since, until, parameter)
+    var stats_list = cacheDB.getCachedBinStatsByDay(sensor, since, until, parameter, false)
 
-    val stats_list = cacheDB.getCachedBinStatsByDay(sensor, since, until, parameter, false)
+    var result_set = ListBuffer[JsValue]()
+    stats_list.foreach(s => {
+      val (year, month, day, count, sum, avg, start_time, end_time) = s
+      val month_digit = "%02d".format(start_time.toLocalDateTime.getMonthValue)
+      val day_digit = "%02d".format(start_time.toLocalDateTime.getDayOfMonth)
+      val label = year.toString + "-" + month_digit + "-" + day_digit
+
+      result_set += Json.obj(
+        "count" -> count,
+        // "sum" -> sum,
+        "average" -> avg,
+        "year" -> year,
+        "month" -> month,
+        "day" -> day,
+        "date" -> start_time.toLocalDateTime,
+        "label" -> label,
+        "sources" -> sources
+      )
+    })
+
+    JsArray(result_set.toList)
+  }
+
+  private def buildJsonArrayBinsDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, sources: List[String], updateBins: Boolean): JsValue = {
+    if (updateBins)
+      cacheDB.calculateBinsByDay(sensor.id, since, until, parameter)
+
+    var stats_list = cacheDB.getCachedArrayBinStatsByDay(sensor, since, until, parameter, false)
 
     var result_set = ListBuffer[JsValue]()
     stats_list.foreach(s => {

@@ -186,7 +186,7 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
         "parameters.search_view, parameters.explore_view, string_to_array(parameters.scale_names, ', ') AS scale_names, " +
         "string_to_array(parameters.scale_colors, ', ') AS scale_colors FROM parameters, parameter_categories, categories " +
         "WHERE parameters.gid = parameter_categories.parameter_gid AND " +
-        "categories.gid = parameter_categories.category_gid AND categories.detail_type = ? ) AS t"
+        "categories.gid = parameter_categories.category_gid AND categories.detail_type like ? ) AS t"
 
       val st = conn.prepareStatement(query)
       st.setString(1, detail_type)
@@ -366,8 +366,24 @@ class PostgresParameters @Inject() (db: Database) extends Parameters {
   }
 
   override def isParameterNested(name: String): Boolean = {
-    val nested_parameters = getParametersByDetailType("stacked_bar")
-    nested_parameters.exists(_.name == name)
+    var isParameterNested = false
+    db.withConnection { conn =>
+      val query = "SELECT detail_type like 'stacked%' " +
+        "FROM parameters pa inner join parameter_categories pc on pa.gid = pc.parameter_gid " +
+        "INNER JOIN categories t3 on pc.category_gid=t3.gid " +
+        "WHERE pa.name=? ;"
+
+      val st = conn.prepareStatement(query)
+      st.setString(1, name)
+      val rs = st.executeQuery()
+
+      while (rs.next()) {
+        isParameterNested = rs.getBoolean(1)
+      }
+      rs.close()
+      st.close()
+    }
+    isParameterNested
   }
 
 }
