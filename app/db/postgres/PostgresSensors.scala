@@ -70,7 +70,7 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
         "SELECT sensor_id, start_time, end_time, unnest(params) AS param FROM streams WHERE sensor_id=?)" +
         "SELECT row_to_json(t, true) AS my_sensor FROM (" +
         "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(geog, 15, 0)::json As geometry, " +
         "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
         "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') as max_end_time, " +
         "array_agg(distinct stream_info.param) as parameters " +
@@ -102,7 +102,7 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
         "SELECT sensor_id, start_time, end_time, unnest(params) AS param FROM streams WHERE sensor_id = ANY(?))" +
         "SELECT row_to_json(t, true) AS my_sensor FROM (" +
         "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(geog, 15, 0)::json As geometry, " +
         "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
         "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') as max_end_time, " +
         "array_agg(distinct stream_info.param) as parameters " +
@@ -195,7 +195,7 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
       var data = ""
       var query = "SELECT row_to_json(t,true) As my_places FROM " +
         "(SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(geog, 15, 0)::json As geometry, sensor_id::int, " +
         "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(end_time AT TIME " +
         "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams"
       query += " WHERE sensor_id = " + id + " ) As t"
@@ -264,7 +264,7 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
         ") " +
         "SELECT row_to_json(t, true) FROM (" +
         "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(geog, 15, 0)::json As geometry, " +
         "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
         "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS max_end_time, " +
         "array_agg(distinct stream_info.param) as parameters " +
@@ -362,7 +362,7 @@ class PostgresSensors @Inject() (db: Database) extends Sensors {
         ") " +
         "SELECT row_to_json(t, true) FROM (" +
         "SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(geog, 15, 0)::json As geometry, " +
         "to_char(min(stream_info.start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS min_start_time, " +
         "to_char(max(stream_info.end_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS max_end_time, " +
         "array_agg(distinct stream_info.param) as parameters " +
