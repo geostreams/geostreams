@@ -96,7 +96,7 @@ class PostgresDatapoints @Inject() (db: Database, sensors: Sensors, actSys: Acto
         "to_char(datapoints.start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, " +
         "to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, " +
         "datapoints.data As properties, 'Feature' As type, " +
-        "ST_AsGeoJson(1, datapoints.geog, 15, 0)::json As geometry, " +
+        "ST_AsGeoJson(datapoints.geog, 15, 0)::json As geometry, " +
         "stream_id::int, sensor_id::int, sensors.name as sensor_name " +
         "FROM sensors, streams, datapoints " +
         "WHERE datapoints.gid=? AND sensors.gid = streams.sensor_id AND datapoints.stream_id = streams.gid) As t;"

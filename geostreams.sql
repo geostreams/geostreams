@@ -551,7 +551,7 @@ SELECT datapoints.gid                                                           
        to_char(datapoints.end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ')   AS end_time,
        datapoints.data                                                                 AS properties,
        'Feature'::varchar(10)                                                          AS type,
-       ST_AsGeoJson(1, datapoints.geog, 15, 0)::json                                   AS geometry,
+       ST_AsGeoJson(datapoints.geog, 15, 0)::json                                   AS geometry,
        stream_id::int,
        sensor_id::int,
        sensors.name                                                                    AS sensor_name,

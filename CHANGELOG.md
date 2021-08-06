@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Changed
+- Update ST_AsGeoJSON to make it work with PostGIS 3
+  [PR#17](https://github.com/geostreams/geostreams/issues/17)
+
 ### Fixed
 - When a sensor is deleted, any cached bins will also be deleted for that sensor [GEOD-1314](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1314)
 
