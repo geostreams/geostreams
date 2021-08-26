@@ -3,7 +3,7 @@ version: "3.3"
 services:
   # web service API
   geostreams:
-    image: geostreams/geostreams-api:latest
+    image: hub.ncsa.illinois.edu/geostreams/geostreams-api:latest
     networks:
     - geostreams
     ports:
@@ -34,7 +34,7 @@ services:
 
   # web frontend
   geodashboard:
-    image: geostreams/geodashboard:3.0-beta
+    image: hub.ncsa.illinois.edu/geostreams/gd-smartfarm
     networks:
     - geostreams
     ports:

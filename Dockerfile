@@ -9,8 +9,9 @@ ENV SCALA_VERSION 2.12.7
 ENV SBT_VERSION 1.2.6
 
 # Install sbt
+COPY sbt-1.2.6.deb .
 RUN \
-  curl -L -o sbt-$SBT_VERSION.deb https://dl.bintray.com/sbt/debian/sbt-$SBT_VERSION.deb && \
+  # curl -L -o sbt-$SBT_VERSION.deb https://scala.jfrog.io/ui/api/v1/download?repoKey=debian&path=%252Fsbt-$SBT_VERSION.deb && \
   dpkg -i sbt-$SBT_VERSION.deb && \
   rm sbt-$SBT_VERSION.deb && \
   apt-get update && \
