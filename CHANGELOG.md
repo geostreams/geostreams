@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - When a sensor is deleted, any cached bins will also be deleted for that sensor [GEOD-1314](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1314)
+- Docker build by using a local version of sbt instead of installing a remote deb package (which is not available anymore).
 
 ## 3.2.0 - 2021-06-01 
 
