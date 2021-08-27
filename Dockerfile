@@ -8,22 +8,13 @@ FROM openjdk:11.0.1-jdk as geostreams-build
 ENV SCALA_VERSION 2.12.7
 ENV SBT_VERSION 1.2.6
 
-# Install sbt
-RUN \
-  curl -L -o sbt-$SBT_VERSION.deb https://dl.bintray.com/sbt/debian/sbt-$SBT_VERSION.deb && \
-  dpkg -i sbt-$SBT_VERSION.deb && \
-  rm sbt-$SBT_VERSION.deb && \
-  apt-get update && \
-  apt-get install sbt && \
-  sbt sbtVersion
-
 WORKDIR /src
 
-# install geostreams libraries (hopefully cached)
-COPY project /src/project
-RUN sbt update
+# install libraries (hopefully cached)
+COPY sbt* /src/
 COPY build.sbt /src/
-RUN sbt update
+COPY project /src/project
+RUN ./sbt update
 
 # compile geostreams
 COPY conf/reference.conf /src/conf/application.conf
@@ -33,7 +24,7 @@ COPY conf/messages /src/conf/messages
 COPY conf/messages.en /src/conf/messages.en
 COPY public /src/public/
 COPY app /src/app/
-RUN sbt dist && unzip -q target/universal/geostreams-*.zip \
+RUN ./sbt dist && unzip -q target/universal/geostreams-*.zip \
     && mv geostreams-* geostreams \
     && mkdir -p geostreams/logs
 
