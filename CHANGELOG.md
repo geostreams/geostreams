@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 3.3.0 - 2021-08-30
 
 ### Changed
 - Update ST_AsGeoJSON to make it work with PostGIS 3
@@ -18,8 +18,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Support for nested parameters in cached trends endpoints [GEOD-1356](https://opensource.ncsa.illinois.edu/jira/browse/GEOD-1356)
-### Changed
 
+### Changed
 
 ## 3.1.0 - 2020-12-14
 
