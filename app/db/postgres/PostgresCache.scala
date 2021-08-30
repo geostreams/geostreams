@@ -1,14 +1,13 @@
 package db.postgres
 
-import java.sql.Timestamp
+import java.sql.{ PreparedStatement, Timestamp }
 import java.text.SimpleDateFormat
 import java.util
 import java.util.{ Collections, Date }
-
 import akka.actor.ActorSystem
 import db.{ Cache, Parameters, Sensors }
-import javax.inject.Inject
 
+import javax.inject.Inject
 import play.api.db.Database
 
 import scala.collection.mutable.ListBuffer
@@ -27,29 +26,56 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
   /* Perform actual query to aggregate datapoint parameter values across specified time range and return resulting bins.
    *  since, until -- SQL query timestamps, e.g. '2017-12', '2013-10-38T12:57:59.923'
    */
-  private def aggregateStatsByYear(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  private def aggregateStatsByYear(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(String, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
-    var bulk_stats = List[(Int, Int, Double, Double, Timestamp, Timestamp)]()
+    var bulk_stats = List[(String, Int, Int, Double, Double, Timestamp, Timestamp)]()
     db.withConnection { conn =>
-      var query =
-        "SELECT extract(year from datapoints.start_time) as yyyy, " +
-          "             count(datapoints.data ->> ?) as count, " +
-          "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
-          "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
-          "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
-          "      from datapoints, streams " +
-          "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ? "
+      var query = ""
+      var st = conn.prepareStatement(query);
+      var i = 0;
+      if (parametersDB.isParameterNested(parameter)) {
+        query =
+          "SELECT " +
+            "concat(?,'/', a) as parameter, " +
+            "extract(year from datapoints.start_time) as yyyy, " +
+            "count(b::float), " +
+            "sum(b::float), avg(b::float), " +
+            "min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+            "FROM datapoints, streams, jsonb_each_text(datapoints.data->?) as spec(a, b) " +
+            "WHERE datapoints.data->? notnull " +
+            "AND datapoints.stream_id = streams.gid " +
+            "AND streams.sensor_id = ? "
+        query += since.fold("")(n => " and datapoints.start_time >= ?")
+        query += until.fold("")(n => " and datapoints.start_time <= ?")
+        query += " GROUP BY 1,2;"
+        st = conn.prepareStatement(query)
 
-      query += since.fold("")(n => " and datapoints.start_time >= ?")
-      query += until.fold("")(n => " and datapoints.start_time <= ?")
-      query += " group by yyyy;"
-      val st = conn.prepareStatement(query)
+        st.setString(1, parameter)
+        st.setString(2, parameter)
+        st.setString(3, parameter)
+        st.setInt(4, sensor_id)
+        i = 5;
+      } else {
+        query =
+          "SELECT ? as parameter, extract(year from datapoints.start_time) as yyyy, " +
+            "             count(datapoints.data ->> ?) as count, " +
+            "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
+            "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
+            "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+            "      from datapoints, streams " +
+            "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ? "
+        query += since.fold("")(n => " and datapoints.start_time >= ?")
+        query += until.fold("")(n => " and datapoints.start_time <= ?")
+        query += " group by yyyy;"
+        st = conn.prepareStatement(query)
 
-      st.setString(1, parameter)
-      st.setString(2, parameter)
-      st.setString(3, parameter)
-      st.setInt(4, sensor_id)
-      var i = 5
+        st.setString(1, parameter)
+        st.setString(2, parameter)
+        st.setString(3, parameter)
+        st.setString(4, parameter)
+        st.setInt(5, sensor_id)
+        i = 6
+      }
       since match {
         case Some(n) => {
           st.setString(i, n)
@@ -69,12 +95,13 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       while (stats.next()) {
         if (stats.getInt(2) > 0)
           bulk_stats = bulk_stats :+ (
-            stats.getInt(1), // year
-            stats.getInt(2), // count
-            stats.getDouble(3), // sum
-            stats.getDouble(4), // avg
-            stats.getTimestamp(5), // start_time
-            stats.getTimestamp(6) // end_time
+            stats.getString(1), // parameter name or nested attribute name
+            stats.getInt(2), // year
+            stats.getInt(3), // count
+            stats.getDouble(4), // sum
+            stats.getDouble(5), // avg
+            stats.getTimestamp(6), // start_time
+            stats.getTimestamp(7) // end_time
           )
       }
 
@@ -297,87 +324,59 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
     bulk_stats
   }
 
-  private def aggregateStatsByMonth(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  private def aggregateStatsByMonth(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(String, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
-    var bulk_stats = List[(Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
+    var bulk_stats = List[(String, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
     db.withConnection { conn =>
-      var query =
-        "SELECT extract(year from datapoints.start_time) as yyyy, " +
-          "      extract(month from datapoints.start_time) as mm, " +
-          "             count(datapoints.data ->> ?) as count, " +
-          "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
-          "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
-          "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
-          "      from datapoints, streams " +
-          "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
-      query += since.fold("")(n => " and datapoints.start_time >= ?")
-      query += until.fold("")(n => " and datapoints.start_time <= ?")
-      query += " group by yyyy, mm;"
-      val st = conn.prepareStatement(query)
+      var query = ""
+      var st = conn.prepareStatement(query);
+      var i = 0;
+      if (parametersDB.isParameterNested(parameter)) {
+        query =
+          "SELECT " +
+            "concat(?,'/', a) as parameter, " +
+            "extract(year from datapoints.start_time) as yyyy, " +
+            "extract(month from datapoints.start_time) as mm, " +
+            "count(b::float), " +
+            "sum(b::float), avg(b::float), " +
+            "min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+            "FROM datapoints, streams, jsonb_each_text(datapoints.data->?) as spec(a, b) " +
+            "WHERE datapoints.data->? notnull " +
+            "AND datapoints.stream_id = streams.gid " +
+            "AND streams.sensor_id = ? "
+        query += since.fold("")(n => " and datapoints.start_time >= ?")
+        query += until.fold("")(n => " and datapoints.start_time <= ?")
+        query += " GROUP BY 1,2,3;"
+        st = conn.prepareStatement(query)
 
-      st.setString(1, parameter)
-      st.setString(2, parameter)
-      st.setString(3, parameter)
-      st.setInt(4, sensor_id)
-      var i = 5
-      since match {
-        case Some(n) => {
-          st.setString(i, n)
-          i += 1
-        }
-        case None => {}
+        st.setString(1, parameter)
+        st.setString(2, parameter)
+        st.setString(3, parameter)
+        st.setInt(4, sensor_id)
+        i = 5;
+      } else {
+        var query =
+          "SELECT ? as parameter, extract(year from datapoints.start_time) as yyyy, " +
+            "      extract(month from datapoints.start_time) as mm, " +
+            "             count(datapoints.data ->> ?) as count, " +
+            "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
+            "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
+            "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+            "      from datapoints, streams " +
+            "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
+        query += since.fold("")(n => " and datapoints.start_time >= ?")
+        query += until.fold("")(n => " and datapoints.start_time <= ?")
+        query += " group by yyyy, mm;"
+        st = conn.prepareStatement(query)
+
+        st.setString(1, parameter)
+        st.setString(2, parameter)
+        st.setString(3, parameter)
+        st.setString(4, parameter)
+        st.setInt(5, sensor_id)
+        i = 6
       }
-      until match {
-        case Some(n) => {
-          st.setString(i, n)
-          i += 1
-        }
-        case None => {}
-      }
-      val stats = st.executeQuery()
 
-      while (stats.next()) {
-        if (stats.getInt(3) > 0)
-          bulk_stats = bulk_stats :+ (
-            stats.getInt(1), // year
-            stats.getInt(2), // month
-            stats.getInt(3), // count
-            stats.getDouble(4), // sum
-            stats.getDouble(5), // avg
-            stats.getTimestamp(6), // start_time
-            stats.getTimestamp(7) // end_time
-          )
-      }
-      stats.close()
-      st.close()
-    }
-    bulk_stats
-  }
-
-  private def aggregateStatsByDay(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
-
-    var bulk_stats = List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
-    db.withConnection { conn =>
-      var query =
-        "SELECT extract(year from datapoints.start_time) as yyyy, " +
-          "      extract(month from datapoints.start_time) as mm, " +
-          "      extract(day from datapoints.start_time) as dd, " +
-          "             count(datapoints.data ->> ?) as count, " +
-          "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
-          "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
-          "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
-          "      from datapoints, streams " +
-          "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
-      query += since.fold("")(n => " and datapoints.start_time >= ?")
-      query += until.fold("")(n => " and datapoints.start_time <= ?")
-      query += " group by yyyy, mm, dd;"
-      val st = conn.prepareStatement(query)
-
-      st.setString(1, parameter)
-      st.setString(2, parameter)
-      st.setString(3, parameter)
-      st.setInt(4, sensor_id)
-      var i = 5
       since match {
         case Some(n) => {
           st.setString(i, n)
@@ -397,9 +396,9 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       while (stats.next()) {
         if (stats.getInt(4) > 0)
           bulk_stats = bulk_stats :+ (
-            stats.getInt(1), // year
-            stats.getInt(2), // month
-            stats.getInt(3), // day
+            stats.getString(1), // parameter name or nested attribute name
+            stats.getInt(2), // year
+            stats.getInt(3), // month
             stats.getInt(4), // count
             stats.getDouble(5), // sum
             stats.getDouble(6), // avg
@@ -413,31 +412,60 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
     bulk_stats
   }
 
-  private def aggregateStatsByHour(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+  private def aggregateStatsByDay(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(String, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
-    var bulk_stats = List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
+    var bulk_stats = List[(String, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
     db.withConnection { conn =>
-      var query =
-        "SELECT extract(year from datapoints.start_time) as yyyy, " +
-          "      extract(month from datapoints.start_time) as mm, " +
-          "      extract(day from datapoints.start_time) as dd, " +
-          "      extract(hour from datapoints.start_time) as hh, " +
-          "             count(datapoints.data ->> ?) as count, " +
-          "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
-          "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
-          "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
-          "      from datapoints, streams " +
-          "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
-      query += since.fold("")(n => " and datapoints.start_time >= ?")
-      query += until.fold("")(n => " and datapoints.start_time <= ?")
-      query += " group by yyyy, mm, dd, hh;"
-      val st = conn.prepareStatement(query)
+      var query = ""
+      var st = conn.prepareStatement(query);
+      var i = 0;
+      if (parametersDB.isParameterNested(parameter)) {
+        query =
+          "SELECT " +
+            "concat(?,'/', a) as parameter, " +
+            "extract(year from datapoints.start_time) as yyyy, " +
+            "extract(month from datapoints.start_time) as mm, " +
+            "extract(day from datapoints.start_time) as dd, " +
+            "count(b::float), " +
+            "sum(b::float), avg(b::float), " +
+            "min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+            "FROM datapoints, streams, jsonb_each_text(datapoints.data->?) as spec(a, b) " +
+            "WHERE datapoints.data->? notnull " +
+            "AND datapoints.stream_id = streams.gid " +
+            "AND streams.sensor_id = ? "
+        query += since.fold("")(n => " and datapoints.start_time >= ?")
+        query += until.fold("")(n => " and datapoints.start_time <= ?")
+        query += " GROUP BY 1,2,3,4;"
+        st = conn.prepareStatement(query)
 
-      st.setString(1, parameter)
-      st.setString(2, parameter)
-      st.setString(3, parameter)
-      st.setInt(4, sensor_id)
-      var i = 5
+        st.setString(1, parameter)
+        st.setString(2, parameter)
+        st.setString(3, parameter)
+        st.setInt(4, sensor_id)
+        i = 5;
+      } else {
+        query =
+          "SELECT ? as parameter, extract(year from datapoints.start_time) as yyyy, " +
+            "      extract(month from datapoints.start_time) as mm, " +
+            "      extract(day from datapoints.start_time) as dd, " +
+            "             count(datapoints.data ->> ?) as count, " +
+            "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
+            "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
+            "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+            "      from datapoints, streams " +
+            "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
+        query += since.fold("")(n => " and datapoints.start_time >= ?")
+        query += until.fold("")(n => " and datapoints.start_time <= ?")
+        query += " group by yyyy, mm, dd;"
+        st = conn.prepareStatement(query)
+
+        st.setString(1, parameter)
+        st.setString(2, parameter)
+        st.setString(3, parameter)
+        st.setString(4, parameter)
+        st.setInt(5, sensor_id)
+        i = 6
+      }
       since match {
         case Some(n) => {
           st.setString(i, n)
@@ -457,15 +485,108 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       while (stats.next()) {
         if (stats.getInt(5) > 0)
           bulk_stats = bulk_stats :+ (
-            stats.getInt(1), // year
-            stats.getInt(2), // month
-            stats.getInt(3), // day
-            stats.getInt(4), // hour
+            stats.getString(1), // parameter name or nested attribute name
+            stats.getInt(2), // year
+            stats.getInt(3), // month
+            stats.getInt(4), // day
             stats.getInt(5), // count
             stats.getDouble(6), // sum
             stats.getDouble(7), // avg
             stats.getTimestamp(8), // start_time
             stats.getTimestamp(9) // end_time
+          )
+      }
+      stats.close()
+      st.close()
+    }
+    bulk_stats
+  }
+
+  private def aggregateStatsByHour(sensor_id: Int, since: Option[String], until: Option[String], parameter: String): List[(String, Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
+
+    var bulk_stats = List[(String, Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
+    db.withConnection { conn =>
+      var query = ""
+      var st = conn.prepareStatement(query);
+      var i = 0;
+      if (parametersDB.isParameterNested(parameter)) {
+        query =
+          "SELECT " +
+            "concat(?,'/', a) as parameter, " +
+            "extract(year from datapoints.start_time) as yyyy, " +
+            "extract(month from datapoints.start_time) as mm, " +
+            "extract(day from datapoints.start_time) as dd, " +
+            "extract(hour from datapoints.start_time) as hh, " +
+            "count(b::float), " +
+            "sum(b::float), avg(b::float), " +
+            "min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+            "FROM datapoints, streams, jsonb_each_text(datapoints.data->?) as spec(a, b) " +
+            "WHERE datapoints.data->? notnull " +
+            "AND datapoints.stream_id = streams.gid " +
+            "AND streams.sensor_id = ? "
+        query += since.fold("")(n => " and datapoints.start_time >= ?")
+        query += until.fold("")(n => " and datapoints.start_time <= ?")
+        query += " GROUP BY 1,2,3,4,5;"
+        st = conn.prepareStatement(query)
+
+        st.setString(1, parameter)
+        st.setString(2, parameter)
+        st.setString(3, parameter)
+        st.setInt(4, sensor_id)
+        i = 5;
+      } else {
+        query =
+          "SELECT ? as parameter, extract(year from datapoints.start_time) as yyyy, " +
+            "      extract(month from datapoints.start_time) as mm, " +
+            "      extract(day from datapoints.start_time) as dd, " +
+            "      extract(hour from datapoints.start_time) as hh, " +
+            "             count(datapoints.data ->> ?) as count, " +
+            "             sum(cast_to_double( datapoints.data ->> ?)) as sum, " +
+            "             avg(cast_to_double( datapoints.data ->> ?)) as avg, " +
+            "             min(datapoints.start_time) as start_time, max(datapoints.end_time) as end_time " +
+            "      from datapoints, streams " +
+            "      WHERE datapoints.stream_id = streams.gid and streams.sensor_id = ?"
+        query += since.fold("")(n => " and datapoints.start_time >= ?")
+        query += until.fold("")(n => " and datapoints.start_time <= ?")
+        query += " group by yyyy, mm, dd, hh;"
+        st = conn.prepareStatement(query)
+
+        st.setString(1, parameter)
+        st.setString(2, parameter)
+        st.setString(3, parameter)
+        st.setString(4, parameter)
+        st.setInt(5, sensor_id)
+        i = 6
+      }
+      since match {
+        case Some(n) => {
+          st.setString(i, n)
+          i += 1
+        }
+        case None => {}
+      }
+      until match {
+        case Some(n) => {
+          st.setString(i, n)
+          i += 1
+        }
+        case None => {}
+      }
+      val stats = st.executeQuery()
+
+      while (stats.next()) {
+        if (stats.getInt(6) > 0)
+          bulk_stats = bulk_stats :+ (
+            stats.getString(1), // parameter name or nested attribute name
+            stats.getInt(2), // year
+            stats.getInt(3), // month
+            stats.getInt(4), // day
+            stats.getInt(5), // hour
+            stats.getInt(6), // count
+            stats.getDouble(7), // sum
+            stats.getDouble(8), // avg
+            stats.getTimestamp(9), // start_time
+            stats.getTimestamp(10) // end_time
           )
       }
       stats.close()
@@ -508,10 +629,10 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
           val st = conn.prepareStatement(query)
           var i = 0
           stats_values.foreach(s => {
-            val (current_year, count, sum, avg, start_time, end_time) = s
+            val (key, current_year, count, sum, avg, start_time, end_time) = s
             st.setInt(i + 1, sensor_id)
             st.setInt(i + 2, current_year)
-            st.setString(i + 3, parameter)
+            st.setString(i + 3, key)
             st.setInt(i + 4, count)
             st.setDouble(i + 5, sum)
             st.setDouble(i + 6, avg)
@@ -609,11 +730,11 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
           val st = conn.prepareStatement(query)
           var i = 0
           stats_values.foreach(s => {
-            val (current_year, current_month, count, sum, avg, start_time, end_time) = s
+            val (key, current_year, current_month, count, sum, avg, start_time, end_time) = s
             st.setInt(i + 1, sensor_id)
             st.setInt(i + 2, current_year)
             st.setInt(i + 3, current_month)
-            st.setString(i + 4, parameter)
+            st.setString(i + 4, key)
             st.setInt(i + 5, count)
             st.setDouble(i + 6, sum)
             st.setDouble(i + 7, avg)
@@ -637,12 +758,12 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       // Limit maximum length of a query
       val max_batch_size = 1000
       // A list of tuples with (query string, list of values to populate)
-      var query_list = ListBuffer[(String, List[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)])]()
+      var query_list = ListBuffer[(String, List[(String, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)])]()
 
       if (stats_values.length > 0) {
         var query = "insert into bins_day (sensor_id, yyyy, mm, dd, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
         var first = true
-        var curr_batch = ListBuffer[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
+        var curr_batch = ListBuffer[(String, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
         var curr_batch_size = 0
 
         stats_values.foreach(s => {
@@ -658,7 +779,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
             query_list += ((query, curr_batch.toList))
             query = "insert into bins_day (sensor_id, yyyy, mm, dd, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
             first = true
-            curr_batch = ListBuffer[(Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
+            curr_batch = ListBuffer[(String, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
             curr_batch_size = 0
           }
         })
@@ -679,12 +800,12 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
             val st = conn.prepareStatement(complete_query)
             var i = 0
             value_list.foreach(s => {
-              val (current_year, current_month, current_day, count, sum, avg, start_time, end_time) = s
+              val (key, current_year, current_month, current_day, count, sum, avg, start_time, end_time) = s
               st.setInt(i + 1, sensor_id)
               st.setInt(i + 2, current_year)
               st.setInt(i + 3, current_month)
               st.setInt(i + 4, current_day)
-              st.setString(i + 5, parameter)
+              st.setString(i + 5, key)
               st.setInt(i + 6, count)
               st.setDouble(i + 7, sum)
               st.setDouble(i + 8, avg)
@@ -710,12 +831,12 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       // Limit maximum length of a query
       val max_batch_size = 1000
       // A list of tuples with (query string, list of values to populate)
-      var query_list = ListBuffer[(String, List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)])]()
+      var query_list = ListBuffer[(String, List[(String, Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)])]()
 
       if (stats_values.length > 0) {
         var query = "insert into bins_hour (sensor_id, yyyy, mm, dd, hh, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
         var first = true
-        var curr_batch = ListBuffer[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
+        var curr_batch = ListBuffer[(String, Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
         var curr_batch_size = 0
 
         stats_values.foreach(s => {
@@ -731,7 +852,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
             query_list += ((query, curr_batch.toList))
             query = "insert into bins_hour (sensor_id, yyyy, mm, dd, hh, parameter, datapoint_count, sum, average, start_time, end_time, updated) values "
             first = true
-            curr_batch = ListBuffer[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
+            curr_batch = ListBuffer[(String, Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
             curr_batch_size = 0
           }
         })
@@ -752,13 +873,13 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
             val st = conn.prepareStatement(complete_query)
             var i = 0
             value_list.foreach(s => {
-              val (current_year, current_month, current_day, current_hour, count, sum, avg, start_time, end_time) = s
+              val (key, current_year, current_month, current_day, current_hour, count, sum, avg, start_time, end_time) = s
               st.setInt(i + 1, sensor_id)
               st.setInt(i + 2, current_year)
               st.setInt(i + 3, current_month)
               st.setInt(i + 4, current_day)
               st.setInt(i + 5, current_hour)
-              st.setString(i + 6, parameter)
+              st.setString(i + 6, key)
               st.setInt(i + 7, count)
               st.setDouble(i + 8, sum)
               st.setDouble(i + 9, avg)
@@ -1349,6 +1470,8 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
     }
 
+    var isNested = parametersDB.isParameterNested(parameter)
+
     db.withConnection { conn =>
       var st = conn.prepareStatement("")
 
@@ -1393,6 +1516,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
         st.setInt(7, end_day)
         st.setInt(8, start_month)
         st.setInt(9, end_month)
+
         st.executeQuery()
       }
 
@@ -1420,6 +1544,99 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       result
   }
 
+  def getCachedArrayBinStatsByDay(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, JsValue, JsValue, Timestamp, Timestamp)] = {
+
+    var result = List[(Int, Int, Int, Int, JsValue, JsValue, Timestamp, Timestamp)]()
+    var tot_count = 0
+    var tot_sum = 0.0
+    var tot_avg = 0.0
+
+    val (start_year, end_year, start_month, end_month, start_day, end_day, start_hour, end_hour) = (since, until) match {
+      case (Some(start_time), Some(end_time)) => DatapointsHelper.parseTimeRange(start_time, end_time)
+      case (Some(start_time), None) => DatapointsHelper.parseTimeRange(start_time, sensor.max_end_time)
+      case (None, Some(end_time)) => DatapointsHelper.parseTimeRange(sensor.min_start_time, end_time)
+      case (None, None) => DatapointsHelper.parseTimeRange(sensor.min_start_time, sensor.max_end_time)
+    }
+
+    db.withConnection { conn =>
+      var st = conn.prepareStatement("")
+
+      val stats = if (start_year != end_year) {
+        val query = "select yyyy, mm, dd, datapoint_count, sum, average, start_time, end_time from bins_day " +
+          "where sensor_id = ? and parameter = ? and (" +
+          // start_year subclause -- special check for start_month+start_day, then get everything after
+          " (yyyy = ? and ((mm = ? and dd >= ?) or (mm > ?))) or " +
+          // end_year subclause -- special check for end_month+end_day, then get everything before
+          " (yyyy = ? and ((mm = ? and dd <= ?) or (mm < ?))) or " +
+          // between subclause -- get everything for these months
+          " (yyyy > ? and yyyy < ?));"
+        st = conn.prepareStatement(query)
+        st.setInt(1, sensor.id)
+        st.setString(2, parameter)
+        // start_year subclause
+        st.setInt(3, start_year)
+        st.setInt(4, start_month)
+        st.setInt(5, start_day)
+        st.setInt(6, start_month)
+        // end_year subclause
+        st.setInt(7, end_year)
+        st.setInt(8, end_month)
+        st.setInt(9, end_day)
+        st.setInt(10, end_month)
+        // between subclause
+        st.setInt(11, start_year)
+        st.setInt(12, end_year)
+        st.executeQuery()
+      } else {
+        var query = "SELECT yyyy, dd, mm, max(datapoint_count) as datapoint_count, " +
+          "jsonb_object_agg(t.parameter,t.sum) as sum, " +
+          "jsonb_object_agg(t.parameter,t.average) as average, " +
+          "min(start_time) as start_time, max(end_time) as end_time " +
+          "FROM ( SELECT yyyy, mm, dd,AVG(average) as average, max(datapoint_count) as datapoint_count, sum(sum), " +
+          "	  			min(start_time) as start_time, max(end_time) as end_time, " +
+          "	  		trim(leading ? from parameter) as parameter " +
+          "	  	FROM bins_day  " +
+          "	  	WHERE sensor_id = ?  " +
+          "		AND parameter like ?  " +
+          "		AND yyyy = ? and ((mm = ? and dd >= ?) or (mm = ? and dd <= ?) or (mm > ? and mm < ?)) " +
+          "	  	GROUP BY parameter, yyyy, mm, dd " +
+          "	 ) as t " +
+          "GROUP BY yyyy, dd, mm " +
+          "ORDER BY   yyyy DESC,mm asc, dd ASC; ";
+
+        st = conn.prepareStatement(query)
+        st.setString(1, parameter + '/')
+        st.setInt(2, sensor.id)
+        st.setString(3, parameter + '%')
+        st.setInt(4, start_year)
+        st.setInt(5, start_month)
+        st.setInt(6, start_day)
+        st.setInt(7, end_month)
+        st.setInt(8, end_day)
+        st.setInt(9, start_month)
+        st.setInt(10, end_month)
+
+        st.executeQuery()
+      }
+
+      while (stats.next()) {
+        val sum: JsValue = Json.parse(stats.getObject(5).toString)
+        result = result :+ (
+          stats.getInt(1), // year
+          stats.getInt(2), // month
+          stats.getInt(3), // day
+          stats.getInt(4),
+          Json.parse(stats.getObject(5).toString), // object of sum
+          Json.parse(stats.getObject(6).toString), // object if avg
+          stats.getTimestamp(7), // start_time
+          stats.getTimestamp(8) // end_time
+        )
+      }
+      stats.close()
+      st.close()
+    }
+    result
+  }
   def getCachedBinStatsByHour(sensor: SensorModel, since: Option[String], until: Option[String], parameter: String, total: Boolean): List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)] = {
 
     var result = List[(Int, Int, Int, Int, Int, Double, Double, Timestamp, Timestamp)]()
