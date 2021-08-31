@@ -45,7 +45,7 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
       // Then simplify this query to not calculate them on the fly.
       val query = "SELECT row_to_json(t,true) As my_stream FROM " +
         "(SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(geog, 15, 0)::json As geometry, sensor_id::int, " +
         "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time,to_char(end_time AT TIME " +
         "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams WHERE gid=?) As t;"
 
@@ -177,7 +177,7 @@ class PostgresStreams @Inject() (db: Database, sensors: Sensors) extends Streams
       var i = 0
       var query = "SELECT row_to_json(t,true) As my_places FROM " +
         "(SELECT gid As id, name, to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created, " +
-        "'Feature' As type, metadata As properties, ST_AsGeoJson(1, geog, 15, 0)::json As geometry, sensor_id::int, " +
+        "'Feature' As type, metadata As properties, ST_AsGeoJson(geog, 15, 0)::json As geometry, sensor_id::int, " +
         "to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS start_time, to_char(end_time AT TIME " +
         "ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS end_time, params AS parameters FROM streams"
       if (parts.length == 3) {
