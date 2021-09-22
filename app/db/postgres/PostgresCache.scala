@@ -1594,7 +1594,7 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
           "min(start_time) as start_time, max(end_time) as end_time " +
           "FROM ( SELECT yyyy, mm, dd,AVG(average) as average, max(datapoint_count) as datapoint_count, sum(sum), " +
           "	  			min(start_time) as start_time, max(end_time) as end_time, " +
-          "	  		trim(leading ? from parameter) as parameter " +
+          "	  		replace(parameter, ?, '') as parameter  " +
           "	  	FROM bins_day  " +
           "	  	WHERE sensor_id = ?  " +
           "		AND parameter like ?  " +
