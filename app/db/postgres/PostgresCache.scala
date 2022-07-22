@@ -1562,30 +1562,44 @@ class PostgresCache @Inject() (db: Database, sensors: Sensors, parametersDB: Par
       var st = conn.prepareStatement("")
 
       val stats = if (start_year != end_year) {
-        val query = "select yyyy, mm, dd, datapoint_count, sum, average, start_time, end_time from bins_day " +
-          "where sensor_id = ? and parameter = ? and (" +
-          // start_year subclause -- special check for start_month+start_day, then get everything after
-          " (yyyy = ? and ((mm = ? and dd >= ?) or (mm > ?))) or " +
+        var query = "SELECT yyyy, dd, mm, max(datapoint_count) as datapoint_count, " +
+          "jsonb_object_agg(t.parameter,t.sum) as sum, " +
+          "jsonb_object_agg(t.parameter,t.average) as average, " +
+          "min(start_time) as start_time, max(end_time) as end_time " +
+          "FROM ( SELECT yyyy, mm, dd,AVG(average) as average, max(datapoint_count) as datapoint_count, sum(sum), " +
+          "	  			min(start_time) as start_time, max(end_time) as end_time, " +
+          "	  		replace(parameter, ?, '') as parameter  " +
+          "	  	FROM bins_day  " +
+          "	  	WHERE sensor_id = ?  " +
+          "		AND parameter like ?  AND (" +
+          // start_year subclause -- special check for start_month+start_day, then get everything after 
+          "     (yyyy = ? AND ((mm = ? AND dd >= ?) OR (mm > ?))) OR" +
           // end_year subclause -- special check for end_month+end_day, then get everything before
-          " (yyyy = ? and ((mm = ? and dd <= ?) or (mm < ?))) or " +
+          "     (yyyy = ? AND ((mm = ? AND dd <= ?) OR (mm < ?))) OR"+
           // between subclause -- get everything for these months
-          " (yyyy > ? and yyyy < ?));"
+          "(yyyy > ? AND yyyy < ?))" +
+          "	  	GROUP BY parameter, yyyy, mm, dd " +
+          "	 ) as t " +
+          "GROUP BY yyyy, dd, mm " +
+          "ORDER BY   yyyy DESC,mm asc, dd ASC; ";
+
         st = conn.prepareStatement(query)
-        st.setInt(1, sensor.id)
-        st.setString(2, parameter)
+        st.setString(1, parameter + '/')
+        st.setInt(2, sensor.id)
+        st.setString(3, parameter + '%')
         // start_year subclause
-        st.setInt(3, start_year)
-        st.setInt(4, start_month)
-        st.setInt(5, start_day)
-        st.setInt(6, start_month)
+        st.setInt(4, start_year)
+        st.setInt(5, start_month)
+        st.setInt(6, start_day)
+        st.setInt(7, start_month)
         // end_year subclause
-        st.setInt(7, end_year)
-        st.setInt(8, end_month)
-        st.setInt(9, end_day)
-        st.setInt(10, end_month)
+        st.setInt(8, end_year)
+        st.setInt(9, end_month)
+        st.setInt(10, end_day)
+        st.setInt(11, end_month)
         // between subclause
-        st.setInt(11, start_year)
-        st.setInt(12, end_year)
+        st.setInt(12, start_year)
+        st.setInt(13, end_year)
         st.executeQuery()
       } else {
         var query = "SELECT yyyy, dd, mm, max(datapoint_count) as datapoint_count, " +
